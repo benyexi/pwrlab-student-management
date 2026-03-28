@@ -71,6 +71,13 @@ function yearToDateString(year: string): string | null {
   return `${normalized}-01-01`
 }
 
+function formatPaperSaveError(message: string): string {
+  if (message.includes('journal_partition') || message.includes('papers_journal_partition_check')) {
+    return '当前数据库仍限制“分区”为单选，无法保存多选组合。请先在 Supabase 执行约束清理 SQL（我已给你）。'
+  }
+  return message
+}
+
 function toPaper(row: any, timeline: { date: string; event: string }[]): Paper {
   return {
     id: row.id,
@@ -239,7 +246,7 @@ export default function Papers() {
         .single()
 
       if (paperError) {
-        setError(paperError.message)
+        setError(formatPaperSaveError(paperError.message))
         return
       }
 
@@ -303,7 +310,7 @@ export default function Papers() {
         .single()
 
       if (updateError) {
-        setError(updateError.message)
+        setError(formatPaperSaveError(updateError.message))
         return
       }
 
