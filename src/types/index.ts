@@ -331,6 +331,7 @@ export interface Report {
   week_start: string
   week_end: string
   content: string
+  next_week_plan?: string
   attachments?: FileRecord[]
   advisor_comment?: string
   created_at?: string
@@ -344,6 +345,7 @@ export interface ReportRow {
   week_start: string | null
   week_end: string | null
   content: string | null
+  next_week_plan: string | null
   advisor_comment: string | null
   created_at: string | null
   updated_at?: string | null

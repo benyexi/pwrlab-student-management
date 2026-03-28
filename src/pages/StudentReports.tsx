@@ -20,6 +20,7 @@ type ReportFormState = {
   week_start: string
   week_end: string
   content: string
+  next_week_plan: string
 }
 
 type DeleteTarget = Report | null
@@ -75,6 +76,7 @@ function makeDefaultForm(): ReportFormState {
     week_start,
     week_end,
     content: '',
+    next_week_plan: '',
   }
 }
 
@@ -102,6 +104,7 @@ export default function StudentReports() {
       week_start: row.week_start || '',
       week_end: row.week_end || '',
       content: row.content || '',
+      next_week_plan: (row as any).next_week_plan || undefined,
       advisor_comment: row.advisor_comment || undefined,
       created_at: row.created_at || undefined,
       updated_at: row.updated_at || undefined,
@@ -199,6 +202,7 @@ export default function StudentReports() {
       week_start: report.week_start,
       week_end: report.week_end,
       content: report.content,
+      next_week_plan: report.next_week_plan || '',
     })
     setFormError('')
     setShowForm(true)
@@ -274,6 +278,7 @@ export default function StudentReports() {
       week_start: form.week_start,
       week_end: form.week_end,
       content: trimmedContent,
+      next_week_plan: form.next_week_plan.trim() || null,
       updated_at: new Date().toISOString(),
     }
 
@@ -440,13 +445,23 @@ export default function StudentReports() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">周报内容</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">本周工作内容</label>
               <textarea
                 value={form.content}
                 onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
-                className="w-full min-h-[220px] px-3 py-2 border rounded-lg text-sm leading-6 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="填写本周工作、问题、下一步计划..."
+                className="w-full min-h-[180px] px-3 py-2 border rounded-lg text-sm leading-6 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="1. 完成了什么工作&#10;2. 遇到了什么问题&#10;3. 取得了哪些进展"
                 required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">下周研究计划</label>
+              <textarea
+                value={form.next_week_plan}
+                onChange={(e) => setForm((prev) => ({ ...prev, next_week_plan: e.target.value }))}
+                className="w-full min-h-[120px] px-3 py-2 border rounded-lg text-sm leading-6 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="1. 下周计划做什么&#10;2. 预期完成的目标"
               />
             </div>
 
@@ -505,17 +520,17 @@ export default function StudentReports() {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         openEditForm(report)
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm hover:bg-blue-100 w-full sm:w-auto justify-center"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      title="修改"
                     >
                       <Edit2 className="w-4 h-4" />
-                      修改
                     </button>
                     <button
                       type="button"
@@ -523,10 +538,10 @@ export default function StudentReports() {
                         e.stopPropagation()
                         setPendingDelete(report)
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-700 text-sm hover:bg-red-100 w-full sm:w-auto justify-center"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="删除"
                     >
                       <Trash2 className="w-4 h-4" />
-                      删除
                     </button>
                   </div>
                 </div>
@@ -544,6 +559,13 @@ export default function StudentReports() {
                       <div className="font-medium text-gray-800">{report.week_end}</div>
                     </div>
                   </div>
+
+                  {report.next_week_plan && (
+                    <div className="mt-3 rounded-lg border border-green-100 bg-green-50 p-3">
+                      <div className="text-xs font-medium text-green-700 mb-1">下周研究计划</div>
+                      <p className="text-sm text-green-800 whitespace-pre-wrap">{report.next_week_plan}</p>
+                    </div>
+                  )}
 
                   {report.advisor_comment && (
                     <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
