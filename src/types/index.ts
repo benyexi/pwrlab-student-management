@@ -180,6 +180,13 @@ export type ProjectStage =
   | '审稿修改'
   | '接收/发表'
 
+export interface StageHistoryEntry {
+  stage: ProjectStage
+  entered_at: string
+  left_at?: string
+  note?: string
+}
+
 export interface Project {
   id: string
   title: string
@@ -189,6 +196,10 @@ export interface Project {
   stage: ProjectStage
   start_date: string
   expected_end_date?: string
+  stage_entered_at?: string
+  stage_history?: StageHistoryEntry[]
+  advisor_notes?: string
+  site_id?: string
   created_at?: string
   updated_at?: string
 }
@@ -202,8 +213,59 @@ export interface ProjectRow {
   stage: ProjectStage | null
   start_date: string | null
   expected_end_date: string | null
+  stage_entered_at: string | null
+  stage_history: StageHistoryEntry[] | null
+  advisor_notes: string | null
+  site_id: string | null
   created_at: string | null
   updated_at: string | null
+}
+
+// ===== 学生提问答疑 =====
+
+export type QuestionStatus = '待回复' | '已回复' | '已关闭'
+
+export interface Question {
+  id: string
+  student_id: string
+  student_name: string
+  title: string
+  content: string
+  status: QuestionStatus
+  project_id?: string
+  project_title?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface QuestionRow {
+  id: string
+  student_id: string | null
+  student_name: string | null
+  title: string | null
+  content: string | null
+  status: QuestionStatus | null
+  project_id: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface QuestionReply {
+  id: string
+  question_id: string
+  author_name: string
+  author_role: Role
+  content: string
+  created_at?: string
+}
+
+export interface QuestionReplyRow {
+  id: string
+  question_id: string | null
+  author_name: string | null
+  author_role: string | null
+  content: string | null
+  created_at: string | null
 }
 
 export type PaperStatus = '在写' | '投稿中' | '审稿中' | '修改中' | '已接收' | '已发表'

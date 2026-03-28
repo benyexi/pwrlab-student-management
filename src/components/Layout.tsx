@@ -16,6 +16,7 @@ import {
   Flag,
   Wrench,
   Database,
+  MessageCircle,
 } from 'lucide-react'
 
 interface NavGroup {
@@ -66,6 +67,7 @@ export default function Layout() {
         { to: '/reports', icon: ClipboardList, label: '周报' },
         { to: '/milestones', icon: Flag, label: '毕业节点' },
         { to: '/reservations', icon: Wrench, label: '仪器预约' },
+        { to: '/questions', icon: MessageCircle, label: '提问答疑' },
       ],
     },
   ]

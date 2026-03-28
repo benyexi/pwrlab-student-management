@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Student } from '../types'
-import { Users, GraduationCap, UserCheck, UserX, Calendar, RefreshCw } from 'lucide-react'
+import { Users, GraduationCap, UserCheck, UserX, Calendar, RefreshCw, MessageCircle } from 'lucide-react'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
+  const [pendingQuestions, setPendingQuestions] = useState(0)
 
-  useEffect(() => { fetchStudents() }, [])
+  useEffect(() => { fetchStudents(); fetchPendingQuestions() }, [])
 
   async function fetchStudents() {
     setLoading(true)
@@ -19,6 +20,14 @@ export default function Dashboard() {
       .order('created_at', { ascending: false })
     if (!error && data) setStudents(data as Student[])
     setLoading(false)
+  }
+
+  async function fetchPendingQuestions() {
+    const { count } = await supabase
+      .from('questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', '待回复')
+    setPendingQuestions(count || 0)
   }
 
   const stats = {
@@ -62,6 +71,21 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+      {/* Pending questions badge */}
+      {pendingQuestions > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors"
+          onClick={() => navigate('/questions')}>
+          <div className="flex items-center gap-3">
+            <MessageCircle className="w-6 h-6 text-amber-600" />
+            <div>
+              <p className="font-semibold text-amber-800">待回复问题</p>
+              <p className="text-sm text-amber-600">有 {pendingQuestions} 个学生提问等待回复</p>
+            </div>
+          </div>
+          <span className="bg-amber-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">{pendingQuestions}</span>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-gray-400" />

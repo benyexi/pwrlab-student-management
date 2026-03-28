@@ -14,6 +14,7 @@ import Reports from './pages/Reports'
 import StudentReports from './pages/StudentReports'
 import Milestones from './pages/Milestones'
 import Reservations from './pages/Reservations'
+import Questions from './pages/Questions'
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="reports/:studentId" element={<StudentReports />} />
         <Route path="milestones" element={<Milestones />} />
         <Route path="reservations" element={<Reservations />} />
+        <Route path="questions" element={<Questions />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
