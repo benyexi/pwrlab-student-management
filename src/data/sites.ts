@@ -1,0 +1,26 @@
+import type { Site } from '../types'
+
+export const SITES: Site[] = [
+  { id: 's01', name_cn: 'Idaho站', name_en: 'Idaho', latitude: 46.73, longitude: -116.78, elevation: 800, tree_species: '花旗松 (Pseudotsuga menziesii)', established_year: 2018 },
+  { id: 's02', name_cn: '温县站', name_en: 'Wenxian', latitude: 34.90, longitude: 113.14, elevation: 110, tree_species: '杨树 (Populus spp.)', established_year: 2019 },
+  { id: 's03', name_cn: '威县站', name_en: 'Weixian', latitude: 37.06, longitude: 115.27, elevation: 35, tree_species: '杨树 (Populus spp.)', established_year: 2020 },
+  { id: 's04', name_cn: '中卫站', name_en: 'Zhongwei', latitude: 37.35, longitude: 105.50, elevation: 1270, tree_species: '柠条 (Caragana korshinskii)', established_year: 2019 },
+  { id: 's05', name_cn: '西宁站', name_en: 'Xining', latitude: 36.68, longitude: 101.62, elevation: 2260, tree_species: '青海云杉 (Picea crassifolia)', established_year: 2020 },
+  { id: 's06', name_cn: '张掖站', name_en: 'Zhangye', latitude: 38.93, longitude: 100.58, elevation: 1480, tree_species: '杨树 (Populus spp.)', established_year: 2018 },
+  { id: 's07', name_cn: '杨凌站', name_en: 'Yangling', latitude: 34.19, longitude: 108.28, elevation: 520, tree_species: '刺槐 (Robinia pseudoacacia)', established_year: 2017 },
+  { id: 's08', name_cn: '莘县站', name_en: 'Shenxian', latitude: 36.32, longitude: 115.50, elevation: 40, tree_species: '杨树 (Populus spp.)', established_year: 2021 },
+  { id: 's09', name_cn: '利津站', name_en: 'Lijin', latitude: 37.58, longitude: 118.29, elevation: 8, tree_species: '柽柳 (Tamarix chinensis)', established_year: 2020 },
+  { id: 's10', name_cn: '天水站', name_en: 'Tianshui', latitude: 34.55, longitude: 105.91, elevation: 1180, tree_species: '油松 (Pinus tabuliformis)', established_year: 2019 },
+  { id: 's11', name_cn: '祁县站', name_en: 'Qixian', latitude: 37.26, longitude: 112.42, elevation: 780, tree_species: '核桃 (Juglans regia)', established_year: 2021 },
+  { id: 's12', name_cn: '高唐站', name_en: 'Gaotang', latitude: 36.81, longitude: 116.10, elevation: 30, tree_species: '杨树 (Populus spp.)', established_year: 2020 },
+  { id: 's13', name_cn: '通州站', name_en: 'Tongzhou', latitude: 39.73, longitude: 116.75, elevation: 25, tree_species: '杨树 (Populus spp.)', established_year: 2021 },
+  { id: 's14', name_cn: '新民站', name_en: 'Xinmin', latitude: 42.01, longitude: 122.75, elevation: 50, tree_species: '杨树 (Populus spp.)', established_year: 2022 },
+  { id: 's15', name_cn: '齐齐哈尔站', name_en: 'Qiqihar', latitude: 47.58, longitude: 124.22, elevation: 150, tree_species: '樟子松 (Pinus sylvestris var. mongolica)', established_year: 2021 },
+  { id: 's16', name_cn: '白城站', name_en: 'Baicheng', latitude: 45.81, longitude: 122.84, elevation: 160, tree_species: '杨树 (Populus spp.)', established_year: 2022 },
+  { id: 's17', name_cn: '南阳站', name_en: 'Nanyang', latitude: 33.05, longitude: 112.62, elevation: 180, tree_species: '马尾松 (Pinus massoniana)', established_year: 2020 },
+  { id: 's18', name_cn: '达拉特站', name_en: 'Dalate', latitude: 40.37, longitude: 109.85, elevation: 1010, tree_species: '沙柳 (Salix psammophila)', established_year: 2019 },
+  { id: 's19', name_cn: '磴口站', name_en: 'Dengkou', latitude: 40.48, longitude: 106.77, elevation: 1050, tree_species: '梭梭 (Haloxylon ammodendron)', established_year: 2018 },
+  { id: 's20', name_cn: '宿迁站', name_en: 'Suqian', latitude: 33.33, longitude: 118.31, elevation: 20, tree_species: '杨树 (Populus spp.)', established_year: 2021 },
+  { id: 's21', name_cn: '伊犁站', name_en: 'Yili', latitude: 43.99, longitude: 80.84, elevation: 680, tree_species: '天山云杉 (Picea schrenkiana)', established_year: 2022 },
+  { id: 's22', name_cn: '济源站', name_en: 'Jiyuan', latitude: 35.04, longitude: 112.45, elevation: 250, tree_species: '侧柏 (Platycladus orientalis)', established_year: 2020 },
+]
