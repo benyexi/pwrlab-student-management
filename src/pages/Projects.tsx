@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FolderKanban, Search, ChevronRight, User } from 'lucide-react'
-import { DEMO_PROJECTS } from '../data/demo'
+import { supabase } from '../lib/supabase'
 import type { Project, ProjectStage } from '../types'
 
 const STAGES: ProjectStage[] = ['选题', '文献综述', '实验设计', '数据采集', '数据分析', '论文写作', '投稿', '审稿修改', '接收/发表']
@@ -9,8 +9,40 @@ const STAGE_COLORS: Record<number, string> = {
 }
 
 export default function Projects() {
-  const [projects, setProjects] = useState<Project[]>(DEMO_PROJECTS)
+  const [projects, setProjects] = useState<Project[]>([])
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadProjects() {
+      setLoading(true)
+      setError(null)
+      const { data, error: fetchError } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (!mounted) return
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setProjects([])
+      } else {
+        setProjects((data || []) as Project[])
+      }
+      setLoading(false)
+    }
+
+    loadProjects()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const filtered = projects.filter(
     (p) => p.title.includes(search) || p.student_name.includes(search)
@@ -19,9 +51,32 @@ export default function Projects() {
   const getStageIndex = (stage: ProjectStage) => STAGES.indexOf(stage)
   const getProgress = (stage: ProjectStage) => ((getStageIndex(stage) + 1) / STAGES.length) * 100
 
-  const handleStageClick = (projectId: string, newStage: ProjectStage) => {
+  const handleStageClick = async (projectId: string, newStage: ProjectStage) => {
+    const previous = projects
     setProjects((prev) =>
       prev.map((p) => (p.id === projectId ? { ...p, stage: newStage } : p))
+    )
+    setSavingId(projectId)
+    try {
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ stage: newStage, updated_at: new Date().toISOString() })
+        .eq('id', projectId)
+
+      if (updateError) {
+        setProjects(previous)
+        setError(updateError.message)
+      }
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-green-200 border-t-green-700" />
+      </div>
     )
   }
 
@@ -38,6 +93,12 @@ export default function Projects() {
             className="pl-10 pr-4 py-2 border rounded-lg text-sm w-full sm:w-64" />
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="space-y-4">
         {filtered.map((project) => {
@@ -84,13 +145,14 @@ export default function Projects() {
                     <button
                       key={stage}
                       onClick={() => handleStageClick(project.id, stage)}
+                      disabled={savingId === project.id}
                       className={`flex items-center gap-0.5 px-2 py-1 rounded-md text-xs transition-all ${
                         isActive
                           ? 'text-white font-medium shadow-sm'
                           : isPast
                           ? 'bg-gray-100 text-gray-500'
                           : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                      }`}
+                      } disabled:opacity-60 disabled:cursor-not-allowed`}
                       style={isActive ? { backgroundColor: STAGE_COLORS[idx] } : undefined}
                     >
                       {isPast && <ChevronRight className="w-3 h-3" />}

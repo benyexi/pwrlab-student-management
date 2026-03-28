@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FileText, Search, Plus, X, Clock, BarChart3, BookOpen } from 'lucide-react'
-import { DEMO_PAPERS } from '../data/demo'
+import { supabase } from '../lib/supabase'
 import type { Paper, PaperStatus } from '../types'
 
 const STATUS_COLORS: Record<PaperStatus, string> = {
@@ -13,12 +13,63 @@ const STATUS_COLORS: Record<PaperStatus, string> = {
 }
 
 export default function Papers() {
-  const [papers, setPapers] = useState<Paper[]>(DEMO_PAPERS)
+  const [papers, setPapers] = useState<Paper[]>([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [form, setForm] = useState({ title: '', authors: '', journal: '', status: '在写' as PaperStatus, impact_factor: '' })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadPapers() {
+      setLoading(true)
+      setError(null)
+
+      const [{ data: paperRows, error: paperError }, { data: timelineRows, error: timelineError }] = await Promise.all([
+        supabase.from('papers').select('*').order('created_at', { ascending: false }),
+        supabase.from('paper_timeline').select('*').order('created_at', { ascending: true }),
+      ])
+
+      if (!mounted) return
+
+      if (paperError) {
+        setError(paperError.message)
+        setPapers([])
+        setLoading(false)
+        return
+      }
+
+      if (timelineError) {
+        setError(timelineError.message)
+      }
+
+      const timelineByPaper = new Map<string, { date: string; event: string }[]>()
+      for (const row of timelineRows || []) {
+        const list = timelineByPaper.get(row.paper_id) || []
+        list.push({ date: row.date, event: row.event })
+        timelineByPaper.set(row.paper_id, list)
+      }
+
+      setPapers(
+        (paperRows || []).map((paper) => ({
+          ...(paper as Paper),
+          timeline: timelineByPaper.get(paper.id) || [],
+        }))
+      )
+      setLoading(false)
+    }
+
+    loadPapers()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const filtered = papers.filter((p) => {
     if (filterStatus && p.status !== filterStatus) return false
@@ -32,20 +83,60 @@ export default function Papers() {
   const inReview = papers.filter((p) => p.status === '审稿中' || p.status === '投稿中').length
   const journals = [...new Set(papers.map((p) => p.journal))]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newPaper: Paper = {
-      id: `pa_${Date.now()}`,
-      title: form.title,
-      authors: form.authors,
-      journal: form.journal,
-      status: form.status,
-      impact_factor: form.impact_factor ? parseFloat(form.impact_factor) : undefined,
-      timeline: [{ date: new Date().toISOString().slice(0, 10), event: '创建记录' }],
+    setSaving(true)
+    setError(null)
+    try {
+      const createdAt = new Date().toISOString()
+      const today = createdAt.slice(0, 10)
+      const payload = {
+        title: form.title,
+        authors: form.authors,
+        journal: form.journal,
+        status: form.status,
+        impact_factor: form.impact_factor ? parseFloat(form.impact_factor) : null,
+      }
+
+      const { data: paperRow, error: paperError } = await supabase
+        .from('papers')
+        .insert([{ ...payload, created_at: createdAt, updated_at: createdAt }])
+        .select('*')
+        .single()
+
+      if (paperError) {
+        setError(paperError.message)
+        return
+      }
+
+      const { error: timelineError } = await supabase
+        .from('paper_timeline')
+        .insert([{ paper_id: paperRow.id, date: today, event: '创建记录' }])
+
+      if (timelineError) {
+        setError(`论文已保存，但时间线写入失败: ${timelineError.message}`)
+      }
+
+      setPapers((prev) => [
+        {
+          ...(paperRow as Paper),
+          timeline: timelineError ? [] : [{ date: today, event: '创建记录' }],
+        },
+        ...prev,
+      ])
+      setShowForm(false)
+      setForm({ title: '', authors: '', journal: '', status: '在写', impact_factor: '' })
+    } finally {
+      setSaving(false)
     }
-    setPapers((prev) => [newPaper, ...prev])
-    setShowForm(false)
-    setForm({ title: '', authors: '', journal: '', status: '在写', impact_factor: '' })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-green-200 border-t-green-700" />
+      </div>
+    )
   }
 
   return (
@@ -55,12 +146,18 @@ export default function Papers() {
           <h1 className="text-2xl font-bold text-gray-900">论文管理</h1>
           <p className="text-gray-500 text-sm mt-1">共 {papers.length} 篇论文</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
+        <button onClick={() => setShowForm(!showForm)} disabled={saving}
           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? '取消' : '添加论文'}
         </button>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -111,7 +208,9 @@ export default function Papers() {
                 <input type="number" step="0.1" value={form.impact_factor} onChange={(e) => setForm({ ...form, impact_factor: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
               </div>
             </div>
-            <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">保存</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+              {saving ? '保存中...' : '保存'}
+            </button>
           </form>
         </div>
       )}

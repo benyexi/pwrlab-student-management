@@ -1,25 +1,104 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, TreePine, Mountain, Search, Calendar } from 'lucide-react'
-import { SITES } from '../data/sites'
+import { supabase } from '../lib/supabase'
+
+type SiteRow = {
+  id: string
+  name_cn: string
+  name_en: string
+  latitude: number
+  longitude: number
+  elevation: number
+  species_cn: string | null
+  species_en: string | null
+  established_year: number
+  region: string | null
+}
 
 export default function Sites() {
   const navigate = useNavigate()
+  const [sites, setSites] = useState<SiteRow[]>([])
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const filtered = SITES.filter(
-    (s) =>
-      s.name_cn.includes(search) ||
-      s.name_en.toLowerCase().includes(search.toLowerCase()) ||
-      s.tree_species.includes(search)
-  )
+  useEffect(() => {
+    let active = true
+
+    async function fetchSites() {
+      setLoading(true)
+      setError(null)
+
+      const { data, error: queryError } = await supabase
+        .from('sites')
+        .select('*')
+        .order('established_year', { ascending: false })
+        .order('name_cn', { ascending: true })
+
+      if (!active) return
+
+      if (queryError) {
+        setError(queryError.message)
+        setSites([])
+      } else {
+        setSites((data ?? []) as SiteRow[])
+      }
+      setLoading(false)
+    }
+
+    fetchSites()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const filtered = useMemo(() => {
+    const keyword = search.trim().toLowerCase()
+    if (!keyword) return sites
+
+    return sites.filter((s) => {
+      const species = `${s.species_cn ?? ''} ${s.species_en ?? ''}`.toLowerCase()
+      const region = (s.region ?? '').toLowerCase()
+      return (
+        s.name_cn.toLowerCase().includes(keyword) ||
+        s.name_en.toLowerCase().includes(keyword) ||
+        species.includes(keyword) ||
+        region.includes(keyword)
+      )
+    })
+  }, [search, sites])
+
+  const getSpeciesLabel = (site: SiteRow) => {
+    const cn = site.species_cn?.trim()
+    const en = site.species_en?.trim()
+    if (cn && en) return `${cn} (${en})`
+    return cn || en || '未知'
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-green-200 border-t-green-700" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+        站点数据加载失败: {error}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">站点管理</h1>
-          <p className="text-gray-500 text-sm mt-1">CP-GPE 观测网络 · 共 {SITES.length} 个站点</p>
+          <p className="text-gray-500 text-sm mt-1">CP-GPE 观测网络 · 共 {sites.length} 个站点</p>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -62,7 +141,7 @@ export default function Sites() {
               </div>
               <div className="flex items-center gap-2">
                 <TreePine className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="truncate">{site.tree_species}</span>
+                <span className="truncate">{getSpeciesLabel(site)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />

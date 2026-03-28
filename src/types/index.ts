@@ -44,8 +44,26 @@ export interface Site {
   longitude: number
   elevation: number
   tree_species: string
+  species_cn?: string
+  species_en?: string
   established_year: number
+  region?: string
   description?: string
+  created_at?: string
+}
+
+export interface SiteRow {
+  id: string
+  name_cn: string
+  name_en: string | null
+  latitude: number | null
+  longitude: number | null
+  elevation: number | null
+  species_cn: string | null
+  species_en: string | null
+  established_year: number | null
+  region: string | null
+  created_at: string | null
 }
 
 export type WeatherSource = 'auto' | 'manual'
@@ -62,10 +80,27 @@ export interface WeatherRecord {
   wind_speed: number
   weather_desc: string
   source: WeatherSource
+  recorded_by?: string
   created_at?: string
 }
 
-export type FieldDataType = 'soil_moisture' | 'sap_flow' | 'growth' | 'irrigation' | 'phenology'
+export interface WeatherRecordRow {
+  id: string
+  site_id: string | null
+  date: string
+  temperature: number | null
+  temperature_min: number | null
+  temperature_max: number | null
+  rainfall: number | null
+  humidity: number | null
+  wind_speed: number | null
+  weather_desc: string | null
+  source: WeatherSource | null
+  recorded_by: string | null
+  created_at: string | null
+}
+
+export type FieldDataType = 'soil_moisture' | 'sap_flow' | 'growth' | 'irrigation' | 'phenology' | 'other'
 
 export interface FieldObservation {
   id: string
@@ -85,6 +120,22 @@ export interface FieldObservation {
   created_at?: string
 }
 
+export interface FieldObservationRow {
+  id: string
+  site_id: string | null
+  student_name: string | null
+  date: string
+  data_type: FieldDataType | null
+  value: number | null
+  unit: string | null
+  dbh: number | null
+  tree_height: number | null
+  irrigation_amount: number | null
+  phenology_stage: string | null
+  notes: string | null
+  created_at: string | null
+}
+
 export interface FileRecord {
   id: string
   name: string
@@ -92,6 +143,28 @@ export interface FileRecord {
   type: string
   url: string
   uploaded_at: string
+  file_name?: string
+  file_path?: string
+  file_type?: string
+  file_size?: number
+  site_id?: string
+  student_name?: string
+  upload_date?: string
+  notes?: string
+  created_at?: string
+}
+
+export interface FileRow {
+  id: string
+  file_name: string
+  file_path: string | null
+  file_type: string | null
+  file_size: number | null
+  site_id: string | null
+  student_name: string | null
+  upload_date: string | null
+  notes: string | null
+  created_at: string | null
 }
 
 // ===== Phase 3: 研究进展+论文管理 =====
@@ -120,11 +193,32 @@ export interface Project {
   updated_at?: string
 }
 
+export interface ProjectRow {
+  id: string
+  title: string
+  description: string | null
+  student_id: string | null
+  student_name: string | null
+  stage: ProjectStage | null
+  start_date: string | null
+  expected_end_date: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
 export type PaperStatus = '在写' | '投稿中' | '审稿中' | '修改中' | '已接收' | '已发表'
 
 export interface PaperTimeline {
   date: string
   event: string
+}
+
+export interface PaperTimelineRow {
+  id: string
+  paper_id: string
+  date: string
+  event: string
+  created_at: string | null
 }
 
 export interface Paper {
@@ -145,6 +239,22 @@ export interface Paper {
   updated_at?: string
 }
 
+export interface PaperRow {
+  id: string
+  title: string
+  authors: string | null
+  journal: string | null
+  status: PaperStatus | null
+  student_name: string | null
+  submit_date: string | null
+  accept_date: string | null
+  publish_date: string | null
+  doi: string | null
+  impact_factor: number | null
+  created_at: string | null
+  updated_at: string | null
+}
+
 // ===== Phase 4: 周报+毕业节点 =====
 
 export interface Report {
@@ -159,9 +269,22 @@ export interface Report {
   created_at?: string
 }
 
+export interface ReportRow {
+  id: string
+  student_id: string | null
+  student_name: string | null
+  week_start: string | null
+  week_end: string | null
+  content: string | null
+  advisor_comment: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
 export type MilestoneType = '开题' | '中期' | '预答辩' | '答辩' | '论文提交'
 
 export type MilestoneStatus = '未开始' | '进行中' | '已完成' | '已逾期'
+export type MilestoneDbStatus = Exclude<MilestoneStatus, '已逾期'>
 
 export interface Milestone {
   id: string
@@ -175,17 +298,40 @@ export interface Milestone {
   created_at?: string
 }
 
+export interface MilestoneRow {
+  id: string
+  student_id: string | null
+  student_name: string | null
+  type: MilestoneType | null
+  planned_date: string | null
+  actual_date: string | null
+  status: MilestoneDbStatus | null
+  created_at: string | null
+}
+
 // ===== Phase 5: 仪器/站点预约 =====
 
 export type InstrumentType = '光合仪' | '水势仪' | '液流探针' | '土壤水分仪' | '气象站' | '无人机' | '树木生长仪' | '其他'
+export type InstrumentStatus = '可用' | '使用中' | '维修中' | '报废'
 
 export interface Instrument {
   id: string
   name: string
   type: InstrumentType
   model?: string
-  status: '可用' | '使用中' | '维修中'
+  status: InstrumentStatus
   location?: string
+  created_at?: string
+}
+
+export interface InstrumentRow {
+  id: string
+  name: string
+  type: string | null
+  model: string | null
+  status: InstrumentStatus | null
+  location: string | null
+  created_at: string | null
 }
 
 export interface Reservation {
@@ -199,4 +345,17 @@ export interface Reservation {
   purpose: string
   status: '待审批' | '已批准' | '已拒绝' | '已完成' | '已取消'
   created_at?: string
+}
+
+export interface ReservationRow {
+  id: string
+  instrument_id: string | null
+  instrument_name: string | null
+  student_id: string | null
+  student_name: string | null
+  start_date: string | null
+  end_date: string | null
+  purpose: string | null
+  status: Reservation['status'] | null
+  created_at: string | null
 }

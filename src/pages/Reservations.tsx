@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Wrench, Search, Plus, X, Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
-import { DEMO_INSTRUMENTS, DEMO_RESERVATIONS } from '../data/demo'
+import { supabase } from '../lib/supabase'
 import type { Reservation, Instrument } from '../types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -18,10 +18,13 @@ const INSTRUMENT_STATUS_COLORS: Record<string, string> = {
 }
 
 export default function Reservations() {
-  const [reservations, setReservations] = useState<Reservation[]>(DEMO_RESERVATIONS)
-  const [instruments] = useState<Instrument[]>(DEMO_INSTRUMENTS)
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [instruments, setInstruments] = useState<Instrument[]>([])
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -32,6 +35,32 @@ export default function Reservations() {
     end_date: '',
     purpose: '',
   })
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    setLoading(true)
+    setError('')
+    try {
+      const [instrumentsRes, reservationsRes] = await Promise.all([
+        supabase.from('instruments').select('*').order('created_at', { ascending: false }),
+        supabase.from('reservations').select('*').order('created_at', { ascending: false }),
+      ])
+
+      if (instrumentsRes.error) throw instrumentsRes.error
+      if (reservationsRes.error) throw reservationsRes.error
+
+      setInstruments((instrumentsRes.data || []) as Instrument[])
+      setReservations((reservationsRes.data || []) as Reservation[])
+    } catch (err) {
+      console.error('Failed to load reservations data:', err)
+      setError('加载预约数据失败，请稍后重试')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Calendar logic
   const calendarDays = useMemo(() => {
@@ -51,9 +80,24 @@ export default function Reservations() {
   }
 
   const handleSubmit = (e: React.FormEvent) => {
+    void submitReservation(e)
+  }
+
+  async function submitReservation(e: React.FormEvent) {
     e.preventDefault()
+    setError('')
+
+    if (form.start_date > form.end_date) {
+      setError('开始日期不能晚于结束日期')
+      return
+    }
+
     const inst = instruments.find((i) => i.id === form.instrument_id)
-    // Check conflicts
+    if (!inst) {
+      setError('请选择有效的仪器')
+      return
+    }
+
     const conflict = reservations.some(
       (r) =>
         r.instrument_id === form.instrument_id &&
@@ -63,23 +107,40 @@ export default function Reservations() {
         form.end_date >= r.start_date
     )
     if (conflict) {
-      alert('该时间段已有预约，请选择其他时间')
+      setError('该时间段已有预约，请选择其他时间')
       return
     }
-    const newRes: Reservation = {
-      id: `res_${Date.now()}`,
-      instrument_id: form.instrument_id,
-      instrument_name: inst?.name || '',
-      student_id: 'current',
-      student_name: '当前用户',
-      start_date: form.start_date,
-      end_date: form.end_date,
-      purpose: form.purpose,
-      status: '待审批',
+
+    setSaving(true)
+    try {
+      const payload: Omit<Reservation, 'id'> = {
+        instrument_id: form.instrument_id,
+        instrument_name: inst.name,
+        student_id: 'current',
+        student_name: '当前用户',
+        start_date: form.start_date,
+        end_date: form.end_date,
+        purpose: form.purpose,
+        status: '待审批',
+      }
+
+      const { data, error: insertError } = await supabase
+        .from('reservations')
+        .insert(payload)
+        .select('*')
+        .single()
+
+      if (insertError) throw insertError
+
+      setReservations((prev) => [data as Reservation, ...prev])
+      setShowForm(false)
+      setForm({ instrument_id: '', start_date: '', end_date: '', purpose: '' })
+    } catch (err) {
+      console.error('Failed to save reservation:', err)
+      setError('提交预约失败，请重试')
+    } finally {
+      setSaving(false)
     }
-    setReservations((prev) => [...prev, newRes])
-    setShowForm(false)
-    setForm({ instrument_id: '', start_date: '', end_date: '', purpose: '' })
   }
 
   const filtered = reservations.filter(
@@ -90,6 +151,13 @@ export default function Reservations() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 w-4 h-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">仪器预约</h1>
@@ -103,19 +171,25 @@ export default function Reservations() {
       </div>
 
       {/* Instrument Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {instruments.map((inst) => (
-          <div key={inst.id} className="bg-white rounded-xl p-4 shadow-sm border">
-            <div className="flex items-center justify-between mb-2">
-              <Wrench className="w-4 h-4 text-gray-400" />
-              <span className={`px-2 py-0.5 rounded-full text-xs ${INSTRUMENT_STATUS_COLORS[inst.status]}`}>{inst.status}</span>
+      {loading ? (
+        <div className="rounded-xl border bg-white p-8 text-center text-gray-400">
+          正在加载仪器和预约数据...
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {instruments.map((inst) => (
+            <div key={inst.id} className="bg-white rounded-xl p-4 shadow-sm border">
+              <div className="flex items-center justify-between mb-2">
+                <Wrench className="w-4 h-4 text-gray-400" />
+                <span className={`px-2 py-0.5 rounded-full text-xs ${INSTRUMENT_STATUS_COLORS[inst.status]}`}>{inst.status}</span>
+              </div>
+              <h3 className="font-medium text-sm text-gray-900 truncate">{inst.name}</h3>
+              <p className="text-xs text-gray-400 mt-0.5">{inst.model}</p>
+              {inst.location && <p className="text-xs text-gray-400">{inst.location}</p>}
             </div>
-            <h3 className="font-medium text-sm text-gray-900 truncate">{inst.name}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">{inst.model}</p>
-            {inst.location && <p className="text-xs text-gray-400">{inst.location}</p>}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Reservation Form */}
       {showForm && (
@@ -145,7 +219,9 @@ export default function Reservations() {
                 <input type="text" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="预约用途" required />
               </div>
             </div>
-            <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">提交预约</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50">
+              {saving ? '提交中...' : '提交预约'}
+            </button>
           </form>
         </div>
       )}
@@ -231,6 +307,9 @@ export default function Reservations() {
               ))}
             </tbody>
           </table>
+          {!loading && filtered.length === 0 && (
+            <div className="py-10 text-center text-gray-400">暂无预约记录</div>
+          )}
         </div>
       </div>
     </div>

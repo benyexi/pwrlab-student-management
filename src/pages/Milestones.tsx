@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Flag, Search, AlertTriangle, CheckCircle, Clock, CircleDot, User } from 'lucide-react'
-import { DEMO_MILESTONES } from '../data/demo'
+import { supabase } from '../lib/supabase'
 import type { Milestone, MilestoneStatus, MilestoneType } from '../types'
 
 const STATUS_CONFIG: Record<MilestoneStatus, { color: string; icon: typeof CheckCircle }> = {
@@ -13,22 +13,77 @@ const STATUS_CONFIG: Record<MilestoneStatus, { color: string; icon: typeof Check
 const TYPE_ORDER: MilestoneType[] = ['开题', '中期', '预答辩', '答辩', '论文提交']
 
 export default function Milestones() {
-  const [milestones] = useState<Milestone[]>(DEMO_MILESTONES)
+  const [milestones, setMilestones] = useState<Milestone[]>([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [viewMode, setViewMode] = useState<'timeline' | 'student'>('student')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const filtered = milestones.filter((m) => {
-    if (filterStatus && m.status !== filterStatus) return false
-    if (search && !m.student_name.includes(search) && !m.type.includes(search)) return false
-    return true
-  })
+  useEffect(() => {
+    let mounted = true
 
-  // Check if upcoming (within 30 days)
+    async function fetchMilestones() {
+      setLoading(true)
+      setError('')
+
+      const { data, error: fetchError } = await supabase
+        .from('milestones')
+        .select('*')
+        .order('planned_date', { ascending: true, nullsFirst: false })
+
+      if (!mounted) return
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setMilestones([])
+      } else {
+        setMilestones(
+          (data || []).map((row) => ({
+            id: row.id,
+            student_id: row.student_id || '',
+            student_name: row.student_name || '',
+            type: row.type as MilestoneType,
+            planned_date: row.planned_date || '',
+            actual_date: row.actual_date || undefined,
+            status: (row.status || '未开始') as MilestoneStatus,
+            created_at: row.created_at || undefined,
+          }))
+        )
+      }
+
+      setLoading(false)
+    }
+
+    fetchMilestones()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  // Check if overdue / upcoming windows based on planned date
+  const isOverdue = (date: string) => {
+    const diff = (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24)
+    return diff > 0
+  }
+
   const isUpcoming = (date: string) => {
     const diff = (new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     return diff >= 0 && diff <= 30
   }
+
+  const getDisplayStatus = (milestone: Milestone): MilestoneStatus => {
+    if (milestone.status === '已完成') return '已完成'
+    if (isOverdue(milestone.planned_date)) return '已逾期'
+    return milestone.status
+  }
+
+  const filtered = milestones.filter((m) => {
+    if (filterStatus && getDisplayStatus(m) !== filterStatus) return false
+    if (search && !m.student_name.includes(search) && !m.type.includes(search)) return false
+    return true
+  })
 
   // Group by student
   const byStudent = useMemo(() => {
@@ -43,7 +98,7 @@ export default function Milestones() {
   }, [filtered])
 
   // Upcoming milestones
-  const upcoming = milestones.filter((m) => m.status !== '已完成' && isUpcoming(m.planned_date))
+  const upcoming = milestones.filter((m) => getDisplayStatus(m) !== '已完成' && isUpcoming(m.planned_date))
 
   return (
     <div className="space-y-6">
@@ -97,7 +152,19 @@ export default function Milestones() {
         </select>
       </div>
 
-      {viewMode === 'student' ? (
+      {loading && (
+        <div className="flex items-center justify-center h-48">
+          <div className="h-10 w-10 rounded-full border-4 border-green-200 border-t-green-700 animate-spin" />
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+          加载毕业节点失败: {error}
+        </div>
+      )}
+
+      {!loading && !error && viewMode === 'student' ? (
         <div className="space-y-4">
           {Object.entries(byStudent).map(([studentName, items]) => (
             <div key={studentName} className="bg-white rounded-xl shadow-sm border p-5">
@@ -110,9 +177,10 @@ export default function Milestones() {
                 <div className="absolute left-4 top-3 bottom-3 w-0.5 bg-gray-200" />
                 <div className="space-y-4">
                   {items.map((m) => {
-                    const config = STATUS_CONFIG[m.status]
+                    const displayStatus = getDisplayStatus(m)
+                    const config = STATUS_CONFIG[displayStatus]
                     const Icon = config.icon
-                    const upcoming = m.status !== '已完成' && isUpcoming(m.planned_date)
+                    const upcoming = displayStatus !== '已完成' && isUpcoming(m.planned_date)
                     return (
                       <div key={m.id} className={`flex items-start gap-4 relative ${upcoming ? 'animate-pulse' : ''}`}>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${config.color}`}>
@@ -121,7 +189,7 @@ export default function Milestones() {
                         <div className={`flex-1 p-3 rounded-lg ${upcoming ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-sm">{m.type}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${config.color}`}>{m.status}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${config.color}`}>{displayStatus}</span>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
                             计划: {m.planned_date}
@@ -142,9 +210,10 @@ export default function Milestones() {
         <div className="bg-white rounded-xl shadow-sm border p-5">
           <div className="space-y-3">
             {[...filtered].sort((a, b) => a.planned_date.localeCompare(b.planned_date)).map((m) => {
-              const config = STATUS_CONFIG[m.status]
+              const displayStatus = getDisplayStatus(m)
+              const config = STATUS_CONFIG[displayStatus]
               const Icon = config.icon
-              const upcoming = m.status !== '已完成' && isUpcoming(m.planned_date)
+              const upcoming = displayStatus !== '已完成' && isUpcoming(m.planned_date)
               return (
                 <div key={m.id} className={`flex items-center gap-4 p-3 rounded-lg ${upcoming ? 'bg-amber-50 border border-amber-200' : 'hover:bg-gray-50'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${config.color}`}>
@@ -158,7 +227,7 @@ export default function Milestones() {
                     </div>
                     <p className="text-xs text-gray-400">{m.planned_date}</p>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs flex-shrink-0 ${config.color}`}>{m.status}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs flex-shrink-0 ${config.color}`}>{displayStatus}</span>
                 </div>
               )
             })}
@@ -166,7 +235,7 @@ export default function Milestones() {
         </div>
       )}
 
-      {filtered.length === 0 && (
+      {!loading && !error && filtered.length === 0 && (
         <div className="text-center py-12 text-gray-400">
           <Flag className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>没有找到匹配的节点</p>
