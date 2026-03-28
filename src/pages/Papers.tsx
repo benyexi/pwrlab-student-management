@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FileText, Search, Plus, X, Clock, BarChart3, BookOpen } from 'lucide-react'
+import { FileText, Search, Plus, X, Clock, BarChart3, BookOpen, Edit2, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Paper, PaperStatus } from '../types'
 
@@ -12,15 +12,51 @@ const STATUS_COLORS: Record<PaperStatus, string> = {
   '已发表': 'bg-emerald-50 text-emerald-700',
 }
 
+type PaperCreateForm = {
+  title: string
+  authors: string
+  journal: string
+  status: PaperStatus
+  impact_factor: string
+}
+
+type PaperEditForm = {
+  title: string
+  authors: string
+  journal: string
+  status: PaperStatus
+  impact_factor: string
+  student_name: string
+  submit_date: string
+  accept_date: string
+  publish_date: string
+  doi: string
+}
+
 export default function Papers() {
   const [papers, setPapers] = useState<Paper[]>([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [form, setForm] = useState({ title: '', authors: '', journal: '', status: '在写' as PaperStatus, impact_factor: '' })
+  const [form, setForm] = useState<PaperCreateForm>({ title: '', authors: '', journal: '', status: '在写', impact_factor: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<PaperEditForm>({
+    title: '',
+    authors: '',
+    journal: '',
+    status: '在写',
+    impact_factor: '',
+    student_name: '',
+    submit_date: '',
+    accept_date: '',
+    publish_date: '',
+    doi: '',
+  })
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -128,6 +164,103 @@ export default function Papers() {
       setForm({ title: '', authors: '', journal: '', status: '在写', impact_factor: '' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  function openEditModal(paper: Paper) {
+    setEditingId(paper.id)
+    setEditForm({
+      title: paper.title,
+      authors: paper.authors,
+      journal: paper.journal,
+      status: paper.status,
+      impact_factor: paper.impact_factor !== undefined ? String(paper.impact_factor) : '',
+      student_name: paper.student_name || '',
+      submit_date: paper.submit_date || '',
+      accept_date: paper.accept_date || '',
+      publish_date: paper.publish_date || '',
+      doi: paper.doi || '',
+    })
+  }
+
+  async function handleUpdatePaper(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingId) return
+
+    setSavingEdit(true)
+    setError(null)
+    try {
+      const updatedAt = new Date().toISOString()
+      const payload = {
+        title: editForm.title,
+        authors: editForm.authors,
+        journal: editForm.journal,
+        status: editForm.status,
+        impact_factor: editForm.impact_factor ? parseFloat(editForm.impact_factor) : null,
+        student_name: editForm.student_name.trim() || null,
+        submit_date: editForm.submit_date || null,
+        accept_date: editForm.accept_date || null,
+        publish_date: editForm.publish_date || null,
+        doi: editForm.doi.trim() || null,
+        updated_at: updatedAt,
+      }
+
+      const { data: updatedRow, error: updateError } = await supabase
+        .from('papers')
+        .update(payload)
+        .eq('id', editingId)
+        .select('*')
+        .single()
+
+      if (updateError) {
+        setError(updateError.message)
+        return
+      }
+
+      setPapers((prev) =>
+        prev.map((paper) =>
+          paper.id === editingId
+            ? {
+                ...paper,
+                title: updatedRow.title,
+                authors: updatedRow.authors || '',
+                journal: updatedRow.journal || '',
+                status: (updatedRow.status as PaperStatus) || paper.status,
+                impact_factor: updatedRow.impact_factor || undefined,
+                student_name: updatedRow.student_name || undefined,
+                submit_date: updatedRow.submit_date || undefined,
+                accept_date: updatedRow.accept_date || undefined,
+                publish_date: updatedRow.publish_date || undefined,
+                doi: updatedRow.doi || undefined,
+                updated_at: updatedRow.updated_at || updatedAt,
+              }
+            : paper
+        )
+      )
+      setEditingId(null)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function handleDeletePaper(paper: Paper) {
+    const ok = confirm(`确定删除论文「${paper.title}」吗？删除后不可恢复。`)
+    if (!ok) return
+
+    setDeletingId(paper.id)
+    setError(null)
+    try {
+      const { error: deleteError } = await supabase.from('papers').delete().eq('id', paper.id)
+      if (deleteError) {
+        setError(deleteError.message)
+        return
+      }
+
+      setPapers((prev) => prev.filter((p) => p.id !== paper.id))
+      if (expandedId === paper.id) setExpandedId(null)
+      if (editingId === paper.id) setEditingId(null)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -242,9 +375,28 @@ export default function Papers() {
                     {paper.impact_factor && <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />IF: {paper.impact_factor}</span>}
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
-                  {paper.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
+                    {paper.status}
+                  </span>
+                  <button
+                    type="button"
+                    title="编辑论文"
+                    onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
+                    className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="删除论文"
+                    disabled={deletingId === paper.id}
+                    onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
+                    className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -276,6 +428,136 @@ export default function Papers() {
         <div className="text-center py-12 text-gray-400">
           <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>没有找到匹配的论文</p>
+        </div>
+      )}
+
+      {editingId && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="font-semibold text-gray-900">编辑论文</h3>
+              <button type="button" onClick={() => setEditingId(null)} className="p-1 rounded hover:bg-gray-100">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdatePaper} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">标题</label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">作者</label>
+                  <input
+                    type="text"
+                    value={editForm.authors}
+                    onChange={(e) => setEditForm({ ...editForm, authors: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">期刊</label>
+                  <input
+                    type="text"
+                    value={editForm.journal}
+                    onChange={(e) => setEditForm({ ...editForm, journal: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">状态</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as PaperStatus })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  >
+                    {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">影响因子</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={editForm.impact_factor}
+                    onChange={(e) => setEditForm({ ...editForm, impact_factor: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">学生</label>
+                  <input
+                    type="text"
+                    value={editForm.student_name}
+                    onChange={(e) => setEditForm({ ...editForm, student_name: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">提交日期</label>
+                  <input
+                    type="date"
+                    value={editForm.submit_date}
+                    onChange={(e) => setEditForm({ ...editForm, submit_date: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">接收日期</label>
+                  <input
+                    type="date"
+                    value={editForm.accept_date}
+                    onChange={(e) => setEditForm({ ...editForm, accept_date: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">发表日期</label>
+                  <input
+                    type="date"
+                    value={editForm.publish_date}
+                    onChange={(e) => setEditForm({ ...editForm, publish_date: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">DOI</label>
+                <input
+                  type="text"
+                  value={editForm.doi}
+                  onChange={(e) => setEditForm({ ...editForm, doi: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingId(null)}
+                  className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-60"
+                >
+                  {savingEdit ? '保存中...' : '保存修改'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

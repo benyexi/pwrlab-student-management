@@ -253,6 +253,7 @@ CREATE POLICY "Authenticated users can insert" ON projects FOR INSERT WITH CHECK
 CREATE POLICY "Authenticated users can update" ON projects FOR UPDATE USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert" ON papers FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can update" ON papers FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can delete" ON papers FOR DELETE USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert" ON paper_timeline FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert" ON reports FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can update" ON reports FOR UPDATE USING (auth.role() = 'authenticated');
