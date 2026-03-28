@@ -371,16 +371,16 @@ export default function SiteDetail() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
-                <th className="px-4 py-3 text-left">日期</th>
-                <th className="px-4 py-3 text-right">温度(°C)</th>
-                <th className="px-4 py-3 text-right">降雨(mm)</th>
-                <th className="px-4 py-3 text-right">湿度(%)</th>
-                <th className="px-4 py-3 text-right">风速(m/s)</th>
-                <th className="px-4 py-3 text-left">天气</th>
-                <th className="px-4 py-3 text-center">来源</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap">日期</th>
+                <th className="px-3 py-3 text-right whitespace-nowrap">温度(°C)</th>
+                <th className="px-3 py-3 text-right whitespace-nowrap">降雨(mm)</th>
+                <th className="px-3 py-3 text-right whitespace-nowrap">湿度(%)</th>
+                <th className="px-3 py-3 text-right whitespace-nowrap">风速(m/s)</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap">天气</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">来源</th>
               </tr>
             </thead>
             <tbody className="divide-y">

@@ -638,10 +638,10 @@ export default function Papers() {
 
       {editingId && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b z-10">
               <h3 className="font-semibold text-gray-900">编辑论文</h3>
-              <button type="button" onClick={() => setEditingId(null)} className="p-1 rounded hover:bg-gray-100">
+              <button type="button" onClick={() => setEditingId(null)} className="p-2 rounded hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>

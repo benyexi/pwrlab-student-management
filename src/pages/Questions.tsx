@@ -177,7 +177,7 @@ export default function Questions() {
                         <StatusIcon className="w-3 h-3" /> {q.status}
                       </span>
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{q.content}</p>
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2 break-words">{q.content}</p>
                   </div>
                   {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />}
                 </div>
@@ -205,18 +205,19 @@ export default function Questions() {
                           </span>
                           <span className="text-xs text-gray-400 ml-auto">{r.created_at?.slice(0, 16).replace('T', ' ')}</span>
                         </div>
-                        <p className="text-gray-600 whitespace-pre-wrap">{r.content}</p>
+                        <p className="text-gray-600 whitespace-pre-wrap break-words">{r.content}</p>
                       </div>
                     ))
                   )}
                   {/* Reply input */}
                   {q.status !== '已关闭' && (
-                    <div className="flex gap-2">
-                      <input type="text" value={expandedId === q.id ? replyText : ''} onChange={e => setReplyText(e.target.value)}
-                        placeholder="输入回复..." className="flex-1 text-sm border rounded-lg px-3 py-2"
-                        onKeyDown={e => { if (e.key === 'Enter') submitReply(q.id) }} />
+                    <div className="flex gap-2 items-end">
+                      <textarea value={expandedId === q.id ? replyText : ''} onChange={e => setReplyText(e.target.value)}
+                        placeholder="输入回复..." className="flex-1 text-sm border rounded-lg px-3 py-2 min-h-[44px] max-h-[120px] resize-y"
+                        rows={2}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitReply(q.id) } }} />
                       <button onClick={() => submitReply(q.id)}
-                        className="px-3 py-2 text-white rounded-lg" style={{ backgroundColor: '#1a3a2a' }}>
+                        className="px-3 py-2 text-white rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center" style={{ backgroundColor: '#1a3a2a' }}>
                         <Send className="w-4 h-4" />
                       </button>
                     </div>
@@ -224,7 +225,7 @@ export default function Questions() {
                   {/* Close button */}
                   {isAdmin && q.status !== '已关闭' && (
                     <button onClick={() => closeQuestion(q.id)}
-                      className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1">
+                      className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 py-2 min-h-[44px]">
                       <XCircle className="w-3.5 h-3.5" /> 关闭问题
                     </button>
                   )}
@@ -245,10 +246,10 @@ export default function Questions() {
       {/* Add Question Modal */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="border-b px-5 py-4 flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between z-10">
               <h3 className="font-bold text-gray-900">提交问题</h3>
-              <button onClick={() => setShowAdd(false)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowAdd(false)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"><X className="w-5 h-5" /></button>
             </div>
             <div className="px-5 py-4 space-y-3">
               <div>

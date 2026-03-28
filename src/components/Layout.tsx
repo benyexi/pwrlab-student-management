@@ -9,7 +9,6 @@ import {
   X,
   TreePine,
   MapPin,
-  FlaskConical,
   FolderKanban,
   FileText,
   ClipboardList,
@@ -18,6 +17,7 @@ import {
   Database,
   MessageCircle,
 } from 'lucide-react'
+import NotificationPanel from './NotificationPanel'
 
 interface NavGroup {
   label: string
@@ -155,16 +155,19 @@ export default function Layout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="bg-white shadow-sm px-4 py-3 flex items-center lg:px-6">
-          <button
-            className="lg:hidden mr-3 p-1 rounded-md hover:bg-gray-100"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="w-6 h-6 text-gray-600" />
-          </button>
-          <h2 className="text-lg font-semibold text-gray-800">
-            人工林水分关系实验室
-          </h2>
+        <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between lg:px-6">
+          <div className="flex items-center">
+            <button
+              className="lg:hidden mr-3 p-2 rounded-md hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="w-6 h-6 text-gray-600" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-800">
+              人工林水分关系实验室
+            </h2>
+          </div>
+          <NotificationPanel />
         </header>
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">

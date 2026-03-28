@@ -240,7 +240,8 @@ export default function Reservations() {
               className="p-1.5 hover:bg-gray-100 rounded"><ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+        <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden min-w-[350px]">
           {['日', '一', '二', '三', '四', '五', '六'].map((d) => (
             <div key={d} className="bg-gray-50 text-center text-xs text-gray-500 py-2 font-medium">{d}</div>
           ))}
@@ -268,6 +269,7 @@ export default function Reservations() {
             )
           })}
         </div>
+        </div>
       </div>
 
       {/* Reservation List */}
@@ -281,14 +283,14 @@ export default function Reservations() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
-                <th className="px-4 py-3 text-left">仪器</th>
-                <th className="px-4 py-3 text-left">预约人</th>
-                <th className="px-4 py-3 text-left">日期范围</th>
-                <th className="px-4 py-3 text-left">用途</th>
-                <th className="px-4 py-3 text-center">状态</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap">仪器</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap">预约人</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap">日期范围</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap">用途</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">状态</th>
               </tr>
             </thead>
             <tbody className="divide-y">

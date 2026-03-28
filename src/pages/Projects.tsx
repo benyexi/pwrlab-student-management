@@ -269,8 +269,8 @@ export default function Projects() {
       )}
 
       {/* Kanban Board */}
-      <div className="overflow-x-auto pb-4 -mx-4 px-4">
-        <div className="flex gap-3" style={{ minWidth: `${STAGES.length * 220}px` }}>
+      <div className="overflow-x-auto pb-4 -mx-4 px-4 -webkit-overflow-scrolling-touch">
+        <div className="flex gap-3" style={{ minWidth: `${STAGES.length * 200}px` }}>
           {STAGES.map(stage => {
             const cards = grouped[stage] || []
             return (
@@ -324,10 +324,10 @@ export default function Projects() {
       {/* Detail Modal */}
       {selectedProject && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedProject(null)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between">
-              <h3 className="font-bold text-gray-900 text-lg">{selectedProject.title}</h3>
-              <button onClick={() => setSelectedProject(null)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between z-10">
+              <h3 className="font-bold text-gray-900 text-lg break-words pr-2">{selectedProject.title}</h3>
+              <button onClick={() => setSelectedProject(null)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"><X className="w-5 h-5" /></button>
             </div>
             <div className="px-5 py-4 space-y-5">
               {/* Basic info */}
@@ -415,10 +415,10 @@ export default function Projects() {
       {/* Add Project Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddForm(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="border-b px-5 py-4 flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between z-10">
               <h3 className="font-bold text-gray-900">添加新课题</h3>
-              <button onClick={() => setShowAddForm(false)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowAddForm(false)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"><X className="w-5 h-5" /></button>
             </div>
             <div className="px-5 py-4 space-y-3">
               <div>

@@ -6,6 +6,7 @@ import {
   Edit2,
   FileText,
   Loader2,
+  MessageSquare,
   Plus,
   Save,
   Trash2,
@@ -95,6 +96,11 @@ export default function StudentReports() {
   const [formError, setFormError] = useState('')
   const [pendingDelete, setPendingDelete] = useState<DeleteTarget>(null)
   const [form, setForm] = useState<ReportFormState>(makeDefaultForm)
+
+  // Advisor comment state
+  const [commentingId, setCommentingId] = useState<string | null>(null)
+  const [commentText, setCommentText] = useState('')
+  const [savingComment, setSavingComment] = useState(false)
 
   const mapReports = (rows: ReportRow[], fallbackStudentId: string, fallbackStudentName: string) => {
     const normalized = rows.map((row) => ({
@@ -312,6 +318,25 @@ export default function StudentReports() {
     if (expandedId === report.id) {
       setExpandedId(null)
     }
+  }
+
+  const handleSaveComment = async (reportId: string) => {
+    if (!commentText.trim()) return
+    setSavingComment(true)
+    const { error: commentError } = await supabase
+      .from('reports')
+      .update({ advisor_comment: commentText.trim(), updated_at: new Date().toISOString() })
+      .eq('id', reportId)
+    if (commentError) {
+      setError(commentError.message)
+    } else {
+      setReports((prev) =>
+        prev.map((r) => (r.id === reportId ? { ...r, advisor_comment: commentText.trim() } : r))
+      )
+      setCommentingId(null)
+      setCommentText('')
+    }
+    setSavingComment(false)
   }
 
   if (loading) {
@@ -567,10 +592,80 @@ export default function StudentReports() {
                     </div>
                   )}
 
-                  {report.advisor_comment && (
+                  {/* Advisor comment section */}
+                  {report.advisor_comment && commentingId !== report.id && (
                     <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
-                      <div className="text-xs font-medium text-blue-700 mb-1">导师批注</div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-xs font-medium text-blue-700">导师批注</div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCommentingId(report.id)
+                            setCommentText(report.advisor_comment || '')
+                          }}
+                          className="p-1 rounded hover:bg-blue-100 text-blue-500 transition-colors"
+                          title="编辑批注"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                       <p className="text-sm text-blue-800 whitespace-pre-wrap">{report.advisor_comment}</p>
+                    </div>
+                  )}
+
+                  {!report.advisor_comment && commentingId !== report.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setCommentingId(report.id)
+                        setCommentText('')
+                      }}
+                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors min-h-[44px]"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      添加批注
+                    </button>
+                  )}
+
+                  {commentingId === report.id && (
+                    <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+                      <div className="text-xs font-medium text-blue-700">
+                        {report.advisor_comment ? '编辑批注' : '添加批注'}
+                      </div>
+                      <textarea
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        className="w-full min-h-[100px] px-3 py-2 border border-blue-200 rounded-lg text-sm leading-6 focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white"
+                        placeholder="输入导师批注..."
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCommentingId(null)
+                            setCommentText('')
+                          }}
+                          className="px-3 py-1.5 text-sm text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 min-h-[36px]"
+                        >
+                          取消
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingComment || !commentText.trim()}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void handleSaveComment(report.id)
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-[36px]"
+                        >
+                          {savingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          保存批注
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

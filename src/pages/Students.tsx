@@ -182,7 +182,7 @@ export default function Students() {
               <h3 className="text-lg font-semibold text-gray-800">
                 {editingId ? '编辑学生' : '添加学生'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded-md">
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-md min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
