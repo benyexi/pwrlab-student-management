@@ -1,6 +1,6 @@
 // OpenWeatherMap API wrapper
 // Replace with your actual API key
-const API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY'
+const API_KEY = 'ecc3a26ba4dc21f272555411b71e81e6'
 const BASE_URL = 'https://api.openweathermap.org/data/2.5'
 
 export interface WeatherApiResponse {
