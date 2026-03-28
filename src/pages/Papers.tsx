@@ -12,7 +12,7 @@ const STATUS_COLORS: Record<PaperStatus, string> = {
   '已发表': 'bg-emerald-50 text-emerald-700',
 }
 
-const PARTITION_OPTIONS: PaperPartition[] = ['1区', '2区', '3区', '4区', '2区TOP']
+const PARTITION_OPTIONS: PaperPartition[] = ['1区', '2区', '3区', '4区', '2区TOP', 'EI', 'CSCD', '卓越期刊']
 
 type PaperForm = {
   title: string
@@ -20,7 +20,7 @@ type PaperForm = {
   journal: string
   status: PaperStatus
   impact_factor: string
-  journal_partition: PaperPartition | ''
+  journal_partitions: PaperPartition[]
   submission_date: string
   publish_year: string
   corresponding_author: string
@@ -33,11 +33,27 @@ const EMPTY_FORM: PaperForm = {
   journal: '',
   status: '在写',
   impact_factor: '',
-  journal_partition: '',
+  journal_partitions: [],
   submission_date: '',
   publish_year: '',
   corresponding_author: '',
   doi: '',
+}
+
+function parsePartitionTags(value?: string): PaperPartition[] {
+  if (!value) return []
+  const set = new Set(
+    value
+      .split(/[，,、;；]/)
+      .map((item) => item.trim())
+      .filter((item): item is PaperPartition => (PARTITION_OPTIONS as string[]).includes(item))
+  )
+  return PARTITION_OPTIONS.filter((item) => set.has(item))
+}
+
+function stringifyPartitionTags(tags: PaperPartition[]): string | null {
+  if (tags.length === 0) return null
+  return PARTITION_OPTIONS.filter((item) => tags.includes(item)).join('、')
 }
 
 function getYearFromDate(date: string | undefined): number | undefined {
@@ -62,7 +78,7 @@ function toPaper(row: any, timeline: { date: string; event: string }[]): Paper {
     status: (row.status as PaperStatus) || '在写',
     submission_date: row.submit_date || undefined,
     publish_year: getYearFromDate(row.publish_date || undefined),
-    journal_partition: (row.journal_partition as PaperPartition) || undefined,
+    journal_partition: row.journal_partition || undefined,
     corresponding_author: row.corresponding_author || undefined,
     doi: row.doi || undefined,
     impact_factor: row.impact_factor ?? undefined,
@@ -201,7 +217,7 @@ export default function Papers() {
         journal: form.journal,
         status: form.status,
         impact_factor: form.impact_factor ? parseFloat(form.impact_factor) : null,
-        journal_partition: form.journal_partition || null,
+        journal_partition: stringifyPartitionTags(form.journal_partitions),
         submit_date: form.submission_date || null,
         publish_date: yearToDateString(form.publish_year),
         corresponding_author: form.corresponding_author.trim() || null,
@@ -241,7 +257,7 @@ export default function Papers() {
       journal: paper.journal,
       status: paper.status,
       impact_factor: paper.impact_factor !== undefined ? String(paper.impact_factor) : '',
-      journal_partition: paper.journal_partition || '',
+      journal_partitions: parsePartitionTags(paper.journal_partition),
       submission_date: paper.submission_date || '',
       publish_year: paper.publish_year !== undefined ? String(paper.publish_year) : '',
       corresponding_author: paper.corresponding_author || '',
@@ -263,7 +279,7 @@ export default function Papers() {
         journal: editForm.journal,
         status: editForm.status,
         impact_factor: editForm.impact_factor ? parseFloat(editForm.impact_factor) : null,
-        journal_partition: editForm.journal_partition || null,
+        journal_partition: stringifyPartitionTags(editForm.journal_partitions),
         submit_date: editForm.submission_date || null,
         publish_date: yearToDateString(editForm.publish_year),
         corresponding_author: editForm.corresponding_author.trim() || null,
@@ -396,12 +412,28 @@ export default function Papers() {
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">分区</label>
-                <select value={form.journal_partition} onChange={(e) => setForm({ ...form, journal_partition: e.target.value as PaperPartition | '' })} className="w-full px-3 py-2 border rounded-lg text-sm">
-                  <option value="">未设置</option>
-                  {PARTITION_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+              <div className="sm:col-span-2 lg:col-span-4">
+                <label className="block text-sm text-gray-600 mb-2">分区（可多选）</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {PARTITION_OPTIONS.map((partition) => (
+                    <label key={partition} className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={form.journal_partitions.includes(partition)}
+                        onChange={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            journal_partitions: prev.journal_partitions.includes(partition)
+                              ? prev.journal_partitions.filter((item) => item !== partition)
+                              : [...prev.journal_partitions, partition],
+                          }))
+                        }
+                        className="rounded border-gray-300"
+                      />
+                      <span>{partition}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">投稿日期</label>
@@ -454,8 +486,8 @@ export default function Papers() {
                       <h3 className="font-medium text-gray-900 text-sm leading-relaxed">{paper.title}</h3>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
                         <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{renderAuthors(paper.authors, paper.corresponding_author)}</span>
-                        <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{paper.journal}</span>
-                        <span className="flex items-center gap-1"><Layers className="w-3 h-3" />{paper.journal_partition || '未设置分区'}</span>
+                        <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /><span className="text-red-600">{paper.journal}</span></span>
+                        <span className="flex items-center gap-1"><Layers className="w-3 h-3" /><span className="font-bold text-black">{paper.journal_partition || '未设置分区'}</span></span>
                         <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />IF: {paper.impact_factor ?? '-'}</span>
                         <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />发表年份: {paper.publish_year ?? '-'}</span>
                       </div>
@@ -552,12 +584,28 @@ export default function Papers() {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">分区</label>
-                  <select value={editForm.journal_partition} onChange={(e) => setEditForm({ ...editForm, journal_partition: e.target.value as PaperPartition | '' })} className="w-full px-3 py-2 border rounded-lg text-sm">
-                    <option value="">未设置</option>
-                    {PARTITION_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <label className="block text-sm text-gray-600 mb-2">分区（可多选）</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {PARTITION_OPTIONS.map((partition) => (
+                      <label key={partition} className="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={editForm.journal_partitions.includes(partition)}
+                          onChange={() =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              journal_partitions: prev.journal_partitions.includes(partition)
+                                ? prev.journal_partitions.filter((item) => item !== partition)
+                                : [...prev.journal_partitions, partition],
+                            }))
+                          }
+                          className="rounded border-gray-300"
+                        />
+                        <span>{partition}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">投稿日期</label>

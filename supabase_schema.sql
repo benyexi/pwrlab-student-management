@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS papers (
   title TEXT NOT NULL,
   authors TEXT,
   journal TEXT,
-  journal_partition TEXT CHECK (journal_partition IN ('1区', '2区', '3区', '4区', '2区TOP')),
+  journal_partition TEXT,
   corresponding_author TEXT,
   status TEXT DEFAULT '在写' CHECK (status IN ('在写', '投稿中', '审稿中', '修改中', '已接收', '已发表')),
   student_name TEXT,

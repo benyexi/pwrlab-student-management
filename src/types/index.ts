@@ -207,7 +207,7 @@ export interface ProjectRow {
 }
 
 export type PaperStatus = '在写' | '投稿中' | '审稿中' | '修改中' | '已接收' | '已发表'
-export type PaperPartition = '1区' | '2区' | '3区' | '4区' | '2区TOP'
+export type PaperPartition = '1区' | '2区' | '3区' | '4区' | '2区TOP' | 'EI' | 'CSCD' | '卓越期刊'
 
 export interface PaperTimeline {
   date: string
@@ -235,7 +235,7 @@ export interface Paper {
   accept_date?: string
   publish_date?: string
   publish_year?: number
-  journal_partition?: PaperPartition
+  journal_partition?: string
   corresponding_author?: string
   doi?: string
   impact_factor?: number
@@ -250,7 +250,7 @@ export interface PaperRow {
   authors: string | null
   journal: string | null
   status: PaperStatus | null
-  journal_partition: PaperPartition | null
+  journal_partition: string | null
   corresponding_author: string | null
   submit_date: string | null
   publish_date: string | null
