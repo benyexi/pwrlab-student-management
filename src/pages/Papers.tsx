@@ -12,6 +12,8 @@ const STATUS_COLORS: Record<PaperStatus, string> = {
   '已发表': 'bg-emerald-50 text-emerald-700',
 }
 
+const PREPARATION_STATUSES: PaperStatus[] = ['在写', '投稿中', '审稿中', '修改中']
+
 const PARTITION_OPTIONS: PaperPartition[] = ['1区', '2区', '3区', '4区', '2区TOP', 'EI', 'CSCD', '卓越期刊']
 
 type PaperForm = {
@@ -155,9 +157,15 @@ export default function Papers() {
     return true
   })
 
+  const preparationPapers = useMemo(
+    () => filtered.filter((paper) => PREPARATION_STATUSES.includes(paper.status)),
+    [filtered]
+  )
+
   const papersByYear = useMemo(() => {
     const groups = new Map<string, Paper[]>()
     for (const paper of filtered) {
+      if (PREPARATION_STATUSES.includes(paper.status)) continue
       const yearLabel = paper.publish_year ? `${paper.publish_year}` : '未分年份'
       const list = groups.get(yearLabel) || []
       list.push(paper)
@@ -346,6 +354,9 @@ export default function Papers() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">论文管理</h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            （<span className="text-blue-600 font-semibold">蓝色</span>标记为通讯作者）
+          </p>
           <p className="text-gray-500 text-sm mt-1">共 {papers.length} 篇论文</p>
         </div>
         <button
@@ -472,6 +483,75 @@ export default function Papers() {
       </div>
 
       <div className="space-y-6">
+        {preparationPapers.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900">准备中的论文</h3>
+              <span className="text-xs text-gray-400">共 {preparationPapers.length} 篇</span>
+            </div>
+            {preparationPapers.map((paper) => (
+              <div key={paper.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="p-5 cursor-pointer" onClick={() => setExpandedId(expandedId === paper.id ? null : paper.id)}>
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 text-sm leading-relaxed">{paper.title}</h3>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{renderAuthors(paper.authors, paper.corresponding_author)}</span>
+                        <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /><span className="text-red-600">{paper.journal}</span></span>
+                        <span className="flex items-center gap-1"><Layers className="w-3 h-3" /><span className="font-bold text-black">{paper.journal_partition || '未设置分区'}</span></span>
+                        <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />IF: {paper.impact_factor ?? '-'}</span>
+                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />发表年份: {paper.publish_year ?? '-'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
+                        {paper.status}
+                      </span>
+                      <button
+                        type="button"
+                        title="编辑论文"
+                        onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
+                        className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="删除论文"
+                        disabled={deletingId === paper.id}
+                        onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
+                        className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {expandedId === paper.id && paper.timeline.length > 0 && (
+                  <div className="px-5 pb-5 border-t bg-gray-50">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase mt-3 mb-2">时间线</h4>
+                    <div className="space-y-2">
+                      {paper.timeline.map((t, i) => (
+                        <div key={i} className="flex items-start gap-3 text-sm">
+                          <div className="flex flex-col items-center">
+                            <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
+                            {i < paper.timeline.length - 1 && <div className="w-0.5 h-6 bg-green-200" />}
+                          </div>
+                          <div>
+                            <span className="text-gray-400 text-xs">{t.date}</span>
+                            <p className="text-gray-700">{t.event}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {papersByYear.map(([year, yearPapers]) => (
           <div key={year} className="space-y-3">
             <div className="flex items-center gap-2">
