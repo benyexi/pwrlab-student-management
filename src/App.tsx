@@ -11,6 +11,7 @@ import FieldData from './pages/FieldData'
 import Projects from './pages/Projects'
 import Papers from './pages/Papers'
 import Reports from './pages/Reports'
+import StudentReports from './pages/StudentReports'
 import Milestones from './pages/Milestones'
 import Reservations from './pages/Reservations'
 
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="projects" element={<Projects />} />
         <Route path="papers" element={<Papers />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="reports/:studentId" element={<StudentReports />} />
         <Route path="milestones" element={<Milestones />} />
         <Route path="reservations" element={<Reservations />} />
       </Route>

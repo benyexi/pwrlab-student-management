@@ -259,6 +259,7 @@ CREATE POLICY "Authenticated users can delete" ON papers FOR DELETE USING (auth.
 CREATE POLICY "Authenticated users can insert" ON paper_timeline FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert" ON reports FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can update" ON reports FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can delete" ON reports FOR DELETE USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert" ON milestones FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can update" ON milestones FOR UPDATE USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert" ON reservations FOR INSERT WITH CHECK (auth.role() = 'authenticated');

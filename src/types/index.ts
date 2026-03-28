@@ -272,6 +272,7 @@ export interface Report {
   attachments?: FileRecord[]
   advisor_comment?: string
   created_at?: string
+  updated_at?: string
 }
 
 export interface ReportRow {
@@ -283,7 +284,7 @@ export interface ReportRow {
   content: string | null
   advisor_comment: string | null
   created_at: string | null
-  updated_at: string | null
+  updated_at?: string | null
 }
 
 export type MilestoneType = '开题' | '中期' | '预答辩' | '答辩' | '论文提交'
