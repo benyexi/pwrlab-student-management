@@ -1,6 +1,6 @@
 // OpenWeatherMap API wrapper
 // Replace with your actual API key
-const API_KEY = 'ecc3a26ba4dc21f272555411b71e81e6'
+const API_KEY: string = import.meta.env.VITE_OPENWEATHERMAP_KEY || 'ecc3a26ba4dc21f272555411b71e81e6'
 const BASE_URL = 'https://api.openweathermap.org/data/2.5'
 
 export interface WeatherApiResponse {
@@ -15,7 +15,7 @@ export interface WeatherApiResponse {
 
 export async function fetchCurrentWeather(lat: number, lon: number): Promise<WeatherApiResponse> {
   // In demo mode, return mock data
-  if (API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
+  if (!API_KEY || API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
     return {
       temperature: +(15 + Math.random() * 15).toFixed(1),
       temperature_min: +(10 + Math.random() * 8).toFixed(1),
