@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, GraduationCap, BookOpen, CalendarDays, ArrowRight, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { resolveOwnedStudents } from '../lib/studentOwnership'
 import type { ReportRow, Student } from '../types'
 
 type StudentReportCard = {
@@ -59,6 +60,11 @@ export default function Reports() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const scopedStudents = useMemo(() => {
+    if (user?.role !== 'student') return students
+    return resolveOwnedStudents(students, user)
+  }, [students, user])
 
   useEffect(() => {
     let mounted = true
@@ -153,8 +159,7 @@ export default function Reports() {
       }
     }
 
-    const filteredStudents = students.filter((student) => {
-      if (user?.role === 'student' && student.name !== user.name) return false
+    const filteredStudents = scopedStudents.filter((student) => {
       if (!search.trim()) return true
       const keyword = search.trim().toLowerCase()
       return (
@@ -182,7 +187,7 @@ export default function Reports() {
         totalWeeks,
       }
     })
-  }, [reports, search, students])
+  }, [reports, scopedStudents, search])
 
   return (
     <div className="space-y-6">
@@ -208,7 +213,7 @@ export default function Reports() {
           在校生
         </span>
         <span className="text-xs text-gray-500">
-          共 {students.length} 名在校生，展示 {cards.length} 名
+          共 {scopedStudents.length} 名在校生，展示 {cards.length} 名
         </span>
       </div>
 

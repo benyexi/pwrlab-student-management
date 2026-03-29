@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import RoleGuard from './components/RoleGuard'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
@@ -33,11 +34,46 @@ export default function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="students" element={<Students />} />
-            <Route path="students/:id" element={<StudentDetail />} />
-            <Route path="sites" element={<Sites />} />
-            <Route path="sites/:id" element={<SiteDetail />} />
-            <Route path="field-data" element={<FieldData />} />
+            <Route
+              path="students"
+              element={
+                <RoleGuard allowedRoles={['admin']}>
+                  <Students />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="students/:id"
+              element={
+                <RoleGuard allowedRoles={['admin']}>
+                  <StudentDetail />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="sites"
+              element={
+                <RoleGuard allowedRoles={['admin']}>
+                  <Sites />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="sites/:id"
+              element={
+                <RoleGuard allowedRoles={['admin']}>
+                  <SiteDetail />
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="field-data"
+              element={
+                <RoleGuard allowedRoles={['admin']}>
+                  <FieldData />
+                </RoleGuard>
+              }
+            />
             <Route path="projects" element={<Projects />} />
             <Route path="papers" element={<Papers />} />
             <Route path="reports" element={<Reports />} />

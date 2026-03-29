@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
   FolderKanban, Search, Plus, X, AlertTriangle, ChevronLeft,
-  ChevronRight, Clock, CalendarDays, User, MapPin, MessageSquare,
-  Filter, GripVertical, FileText,
+  ChevronRight, Clock, User, Filter, GripVertical,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -30,6 +29,14 @@ function stayColor(days: number): string {
   if (days > 90) return 'text-red-600 bg-red-50'
   if (days > 30) return 'text-orange-600 bg-orange-50'
   return 'text-gray-500 bg-gray-50'
+}
+
+function mergeUniqueById<T extends { id: string }>(...rowsList: T[][]): T[] {
+  const map = new Map<string, T>()
+  rowsList.flat().forEach((row) => {
+    if (!map.has(row.id)) map.set(row.id, row)
+  })
+  return Array.from(map.values())
 }
 
 export default function Projects() {
@@ -66,21 +73,92 @@ export default function Projects() {
     async function load() {
       setLoading(true)
       setError(null)
-      const [projRes, stuRes, siteRes] = await Promise.all([
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('students').select('*').order('name'),
-        supabase.from('sites').select('*').order('name_cn'),
+
+      const sitePromise = supabase.from('sites').select('*').order('name_cn')
+
+      if (isAdmin) {
+        const [projRes, stuRes, siteRes] = await Promise.all([
+          supabase.from('projects').select('*').order('created_at', { ascending: false }),
+          supabase.from('students').select('*').order('name'),
+          sitePromise,
+        ])
+
+        if (!mounted) return
+        if (projRes.error) {
+          setError(projRes.error.message)
+          setProjects([])
+        } else {
+          setProjects((projRes.data || []) as Project[])
+        }
+        if (!stuRes.error && stuRes.data) setStudents(stuRes.data as Student[])
+        if (!siteRes.error && siteRes.data) setSites(siteRes.data as Site[])
+        setLoading(false)
+        return
+      }
+
+      if (!user) {
+        if (!mounted) return
+        setProjects([])
+        setStudents([])
+        setSites([])
+        setLoading(false)
+        return
+      }
+
+      const [siteRes, projectsByAuthRes, projectsByNameRes, studentsByNameRes, studentsByLegacyIdRes] = await Promise.all([
+        sitePromise,
+        supabase.from('projects').select('*').eq('student_id', user.id).order('created_at', { ascending: false }),
+        user.name
+          ? supabase.from('projects').select('*').eq('student_name', user.name).order('created_at', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
+        user.name
+          ? supabase.from('students').select('*').eq('name', user.name).order('name')
+          : Promise.resolve({ data: [], error: null }),
+        supabase.from('students').select('*').eq('student_id', user.id).order('name'),
       ])
+
       if (!mounted) return
-      if (projRes.error) { setError(projRes.error.message); setProjects([]) }
-      else setProjects((projRes.data || []) as Project[])
-      if (!stuRes.error && stuRes.data) setStudents(stuRes.data as Student[])
+
+      const basicError =
+        projectsByAuthRes.error?.message ||
+        projectsByNameRes.error?.message ||
+        studentsByNameRes.error?.message ||
+        studentsByLegacyIdRes.error?.message
+
+      if (basicError) setError(basicError)
+
+      const ownStudents = mergeUniqueById<Student>(
+        (studentsByNameRes.data || []) as Student[],
+        (studentsByLegacyIdRes.data || []) as Student[]
+      )
+
+      let projectsByStudentIds: Project[] = []
+      if (ownStudents.length > 0) {
+        const ownStudentIds = ownStudents.map((s) => s.id)
+        const byStudentIdsRes = await supabase
+          .from('projects')
+          .select('*')
+          .in('student_id', ownStudentIds)
+          .order('created_at', { ascending: false })
+
+        if (byStudentIdsRes.error && !basicError) setError(byStudentIdsRes.error.message)
+        projectsByStudentIds = (byStudentIdsRes.data || []) as Project[]
+      }
+
+      const visibleProjects = mergeUniqueById<Project>(
+        (projectsByAuthRes.data || []) as Project[],
+        (projectsByNameRes.data || []) as Project[],
+        projectsByStudentIds
+      ).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+
+      setProjects(visibleProjects)
+      setStudents(ownStudents)
       if (!siteRes.error && siteRes.data) setSites(siteRes.data as Site[])
       setLoading(false)
     }
     load()
     return () => { mounted = false }
-  }, [])
+  }, [isAdmin, user])
 
   // Filtered projects
   const filtered = useMemo(() => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getStudents, supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { resolveOwnedStudents } from '../lib/studentOwnership'
 import type { Student, DashboardStats } from '../types'
 
 function computeStats(students: Student[]): DashboardStats {
@@ -44,21 +45,42 @@ const statusColor: Record<string, string> = {
 export default function Dashboard() {
   const { user } = useAuth()
   const [students, setStudents] = useState<Student[]>([])
-  const [myPapers, setMyPapers] = useState<{ id: string; title: string; status: string; authors: string }[]>([])
-  const [myMilestones, setMyMilestones] = useState<{ id: string; type: string; status: string; planned_date: string }[]>([])
+  const [myPapers, setMyPapers] = useState<{ id: string; title: string; status: string; authors: string; student_id?: string; student_name?: string }[]>([])
+  const [myMilestones, setMyMilestones] = useState<{ id: string; type: string; status: string; planned_date: string; student_id?: string; student_name?: string }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (user?.role === 'student') {
       Promise.all([
-        supabase.from('students').select('*').eq('email', user.email),
-        supabase.from('papers').select('id, title, status, authors').order('created_at', { ascending: false }),
-        supabase.from('milestones').select('id, type, status, planned_date').eq('student_name', user.name).order('planned_date', { ascending: true }),
+        supabase.from('students').select('*'),
+        supabase.from('papers').select('id, title, status, authors, student_id, student_name').order('created_at', { ascending: false }),
+        supabase.from('milestones').select('id, type, status, planned_date, student_id, student_name').order('planned_date', { ascending: true }),
       ]).then(([studRes, papersRes, milestonesRes]) => {
-        setStudents((studRes.data || []) as Student[])
-        const allPapers = (papersRes.data || []) as { id: string; title: string; status: string; authors: string }[]
-        setMyPapers(allPapers.filter((p) => (p.authors || '').includes(user.name)))
-        setMyMilestones((milestonesRes.data || []) as { id: string; type: string; status: string; planned_date: string }[])
+        const allStudents = (studRes.data || []) as Student[]
+        const ownedStudents = resolveOwnedStudents(allStudents, user)
+        const ownedStudentIds = new Set(ownedStudents.map((student) => student.id))
+        const ownedStudentNames = new Set(ownedStudents.map((student) => student.name))
+
+        setStudents(ownedStudents)
+
+        const allPapers = (papersRes.data || []) as { id: string; title: string; status: string; authors: string; student_id?: string; student_name?: string }[]
+        setMyPapers(
+          allPapers.filter((paper) => {
+            const byStudent =
+              (paper.student_id && ownedStudentIds.has(paper.student_id)) ||
+              (paper.student_name && ownedStudentNames.has(paper.student_name))
+            const byAuthor = (paper.authors || '').includes(user.name)
+            return Boolean(byStudent || byAuthor)
+          })
+        )
+
+        const allMilestones = (milestonesRes.data || []) as { id: string; type: string; status: string; planned_date: string; student_id?: string; student_name?: string }[]
+        setMyMilestones(
+          allMilestones.filter((milestone) =>
+            (milestone.student_id && ownedStudentIds.has(milestone.student_id)) ||
+            (milestone.student_name && ownedStudentNames.has(milestone.student_name))
+          )
+        )
         setLoading(false)
       })
     } else {

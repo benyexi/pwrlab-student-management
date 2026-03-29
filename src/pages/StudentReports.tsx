@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { canAccessStudent } from '../lib/studentOwnership'
 import type { Report, ReportRow, Student } from '../types'
 
 type ReportFormState = {
@@ -91,6 +92,7 @@ export default function StudentReports() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [forbidden, setForbidden] = useState(false)
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -137,9 +139,13 @@ export default function StudentReports() {
     async function fetchStudentReports() {
       setLoading(true)
       setError('')
+      setForbidden(false)
 
       try {
-        const studentResult = await supabase.from('students').select('*').eq('id', studentId).single()
+        const [studentResult, allStudentsResult] = await Promise.all([
+          supabase.from('students').select('*').eq('id', studentId).single(),
+          supabase.from('students').select('*'),
+        ])
 
         if (!mounted) return
 
@@ -153,25 +159,70 @@ export default function StudentReports() {
         const nextStudent = studentResult.data as Student
         setStudent(nextStudent)
 
-        const [reportsByIdResult, reportsByNameResult] = await Promise.all([
-          supabase.from('reports').select('*').eq('student_id', studentId).order('week_start', { ascending: false }),
-          supabase.from('reports').select('*').eq('student_name', nextStudent.name).order('week_start', { ascending: false }),
-        ])
+        if (!mounted) return
+
+        if (user?.role === 'student') {
+          const ownershipPool = allStudentsResult.error
+            ? [nextStudent]
+            : ((allStudentsResult.data || []) as Student[])
+
+          if (!canAccessStudent(nextStudent, ownershipPool, user)) {
+            setForbidden(true)
+            setReports([])
+            return
+          }
+        }
+
+        const reportsByIdResult = await supabase
+          .from('reports')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('week_start', { ascending: false })
 
         if (!mounted) return
 
-        if (reportsByIdResult.error || reportsByNameResult.error) {
-          setError(reportsByIdResult.error?.message || reportsByNameResult.error?.message || '加载周报失败')
+        if (reportsByIdResult.error) {
+          setError(reportsByIdResult.error.message || '加载周报失败')
           setReports([])
-        } else {
-          const nextReports = mapReports(
-            [...(reportsByIdResult.data || []), ...(reportsByNameResult.data || [])],
-            studentId || '',
-            nextStudent.name || ''
-          )
-          setReports(nextReports)
-          setExpandedId((current) => current ?? (nextReports[0]?.id ?? null))
+          return
         }
+
+        let mergedRows: ReportRow[] = [...(reportsByIdResult.data || [])]
+
+        const studentEmail = (nextStudent.email || '').trim().toLowerCase()
+        const userEmail = (user?.email || '').trim().toLowerCase()
+        const canUseNameFallback = user?.role !== 'student' || Boolean(studentEmail && userEmail && studentEmail === userEmail)
+
+        if (canUseNameFallback && nextStudent.name) {
+          const reportsByNameResult = await supabase
+            .from('reports')
+            .select('*')
+            .eq('student_name', nextStudent.name)
+            .order('week_start', { ascending: false })
+
+          if (reportsByNameResult.error) {
+            setError(reportsByNameResult.error.message || '加载周报失败')
+            setReports([])
+            return
+          }
+
+          if (user?.role === 'student') {
+            mergedRows = [
+              ...mergedRows,
+              ...(reportsByNameResult.data || []).filter((row) => !row.student_id || row.student_id === studentId),
+            ]
+          } else {
+            mergedRows = [...mergedRows, ...(reportsByNameResult.data || [])]
+          }
+        }
+
+        const nextReports = mapReports(
+          mergedRows,
+          studentId || '',
+          nextStudent.name || ''
+        )
+        setReports(nextReports)
+        setExpandedId((current) => current ?? (nextReports[0]?.id ?? null))
       } finally {
         if (mounted) {
           setLoading(false)
@@ -184,7 +235,7 @@ export default function StudentReports() {
     return () => {
       mounted = false
     }
-  }, [studentId])
+  }, [studentId, user])
 
   const sortedReports = useMemo(
     () =>
@@ -224,17 +275,46 @@ export default function StudentReports() {
 
   const refreshReports = async () => {
     if (!studentId || !student) return
-    const [reportsByIdResult, reportsByNameResult] = await Promise.all([
-      supabase.from('reports').select('*').eq('student_id', studentId).order('week_start', { ascending: false }),
-      supabase.from('reports').select('*').eq('student_name', student.name).order('week_start', { ascending: false }),
-    ])
 
-    if (reportsByIdResult.error || reportsByNameResult.error) {
-      setError(reportsByIdResult.error?.message || reportsByNameResult.error?.message || '刷新周报失败')
+    const reportsByIdResult = await supabase
+      .from('reports')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('week_start', { ascending: false })
+
+    if (reportsByIdResult.error) {
+      setError(reportsByIdResult.error.message || '刷新周报失败')
       return
     }
 
-    setReports(mapReports([...(reportsByIdResult.data || []), ...(reportsByNameResult.data || [])], studentId, student.name || ''))
+    let mergedRows: ReportRow[] = [...(reportsByIdResult.data || [])]
+    const studentEmail = (student.email || '').trim().toLowerCase()
+    const userEmail = (user?.email || '').trim().toLowerCase()
+    const canUseNameFallback = user?.role !== 'student' || Boolean(studentEmail && userEmail && studentEmail === userEmail)
+
+    if (canUseNameFallback && student.name) {
+      const reportsByNameResult = await supabase
+        .from('reports')
+        .select('*')
+        .eq('student_name', student.name)
+        .order('week_start', { ascending: false })
+
+      if (reportsByNameResult.error) {
+        setError(reportsByNameResult.error.message || '刷新周报失败')
+        return
+      }
+
+      if (user?.role === 'student') {
+        mergedRows = [
+          ...mergedRows,
+          ...(reportsByNameResult.data || []).filter((row) => !row.student_id || row.student_id === studentId),
+        ]
+      } else {
+        mergedRows = [...mergedRows, ...(reportsByNameResult.data || [])]
+      }
+    }
+
+    setReports(mapReports(mergedRows, studentId, student.name || ''))
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -255,19 +335,46 @@ export default function StudentReports() {
     setFormError('')
     setError('')
 
-    const [existingByIdResult, existingByNameResult] = await Promise.all([
-      supabase.from('reports').select('id,week_start').eq('student_id', studentId),
-      supabase.from('reports').select('id,week_start').eq('student_name', student.name),
-    ])
+    const existingByIdResult = await supabase
+      .from('reports')
+      .select('id,week_start,student_id')
+      .eq('student_id', studentId)
 
-    if (existingByIdResult.error || existingByNameResult.error) {
-      setFormError(existingByIdResult.error?.message || existingByNameResult.error?.message || '查重失败')
+    if (existingByIdResult.error) {
+      setFormError(existingByIdResult.error.message || '查重失败')
       setSaving(false)
       return
     }
 
+    let existingRows: { id: string; week_start: string | null; student_id?: string | null }[] = [...(existingByIdResult.data || [])]
+
+    const studentEmail = (student.email || '').trim().toLowerCase()
+    const userEmail = (user?.email || '').trim().toLowerCase()
+    const canUseNameFallback = user?.role !== 'student' || Boolean(studentEmail && userEmail && studentEmail === userEmail)
+
+    if (canUseNameFallback && student.name) {
+      const existingByNameResult = await supabase
+        .from('reports')
+        .select('id,week_start,student_id')
+        .eq('student_name', student.name)
+
+      if (existingByNameResult.error) {
+        setFormError(existingByNameResult.error.message || '查重失败')
+        setSaving(false)
+        return
+      }
+
+      if (user?.role === 'student') {
+        existingRows = [
+          ...existingRows,
+          ...(existingByNameResult.data || []).filter((row) => !row.student_id || row.student_id === studentId),
+        ]
+      } else {
+        existingRows = [...existingRows, ...(existingByNameResult.data || [])]
+      }
+    }
+
     const nextWeekKey = getIsoWeekKey(form.week_start)
-    const existingRows = [...(existingByIdResult.data || []), ...(existingByNameResult.data || [])]
     const hasDuplicateWeek = existingRows.some((row) => {
       if (editingId && row.id === editingId) return false
       if (!row.week_start) return false
@@ -384,7 +491,7 @@ export default function StudentReports() {
     )
   }
 
-  if (user?.role === 'student' && student.email !== user.email && student.name !== user.name) {
+  if (forbidden) {
     return (
       <div className="space-y-6">
         <button
