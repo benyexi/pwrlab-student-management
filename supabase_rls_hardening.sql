@@ -10,6 +10,16 @@
 BEGIN;
 
 -- ---------------------------------------------------------
+-- Schema compatibility (older deployments may miss columns)
+-- ---------------------------------------------------------
+
+ALTER TABLE IF EXISTS public.students
+  ADD COLUMN IF NOT EXISTS email TEXT,
+  ADD COLUMN IF NOT EXISTS phone TEXT,
+  ADD COLUMN IF NOT EXISTS notes TEXT,
+  ADD COLUMN IF NOT EXISTS supervisor_id TEXT;
+
+-- ---------------------------------------------------------
 -- Helper functions (SECURITY DEFINER, stable)
 -- ---------------------------------------------------------
 
@@ -22,8 +32,31 @@ SET search_path = public
 AS $$
   SELECT COALESCE(
     (SELECT p.name FROM public.profiles p WHERE p.id = auth.uid()),
+    split_part(
+      LOWER(COALESCE(
+        (SELECT p.email FROM public.profiles p WHERE p.id = auth.uid()),
+        auth.jwt() ->> 'email',
+        ''
+      )),
+      '@',
+      1
+    ),
     ''
   )
+$$;
+
+CREATE OR REPLACE FUNCTION public.current_profile_email()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT LOWER(COALESCE(
+    (SELECT p.email FROM public.profiles p WHERE p.id = auth.uid()),
+    auth.jwt() ->> 'email',
+    ''
+  ))
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -70,6 +103,7 @@ AS $$
           WHERE s.id::text = target_student_id
             AND (
               s.name = public.current_profile_name()
+              OR LOWER(COALESCE(s.email, '')) = public.current_profile_email()
               OR s.student_id = auth.uid()::text
             )
         )
@@ -90,6 +124,7 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.current_profile_name() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.current_profile_email() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_owner_by_name(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_owner_by_student_ref(TEXT, TEXT) TO authenticated;
