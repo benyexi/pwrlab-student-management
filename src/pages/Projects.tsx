@@ -85,7 +85,7 @@ export default function Projects() {
   // Filtered projects
   const filtered = useMemo(() => {
     return projects.filter((p) => {
-      if (search && !p.title.includes(search) && !p.student_name.includes(search)) return false
+      if (search && !p.title.includes(search) && !(p.student_name || '').includes(search)) return false
       if (filterStudent && p.student_id !== filterStudent) return false
       if (filterSite && p.site_id !== filterSite) return false
       if (filterYear) {

@@ -228,8 +228,8 @@ export default function StudentDetail() {
 
       {/* Meta */}
       <p className="text-xs text-gray-400 text-center pb-2">
-        创建于 {new Date(student.created_at).toLocaleDateString('zh-CN')}
-        {student.updated_at !== student.created_at &&
+        {student.created_at && `创建于 ${new Date(student.created_at).toLocaleDateString('zh-CN')}`}
+        {student.updated_at && student.updated_at !== student.created_at &&
           ` · 更新于 ${new Date(student.updated_at).toLocaleDateString('zh-CN')}`}
       </p>
     </div>

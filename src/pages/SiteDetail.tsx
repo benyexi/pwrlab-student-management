@@ -233,8 +233,8 @@ export default function SiteDetail() {
     )
   }
 
-  const maxTemp = Math.max(...chartData.map((d) => d.temperature), 1)
-  const maxRain = Math.max(...chartData.map((d) => d.rainfall), 1)
+  const maxTemp = Math.max(...chartData.map((d) => d.temperature ?? 0), 1)
+  const maxRain = Math.max(...chartData.map((d) => d.rainfall ?? 0), 1)
 
   return (
     <div className="space-y-6">
@@ -282,18 +282,18 @@ export default function SiteDetail() {
                 fill="none"
                 stroke="#ef4444"
                 strokeWidth="2"
-                points={chartData.map((d, i) => `${40 + i * (520 / Math.max(chartData.length - 1, 1))},${170 - (d.temperature / maxTemp) * 140}`).join(' ')}
+                points={chartData.map((d, i) => `${40 + i * (520 / Math.max(chartData.length - 1, 1))},${170 - ((d.temperature ?? 0) / maxTemp) * 140}`).join(' ')}
               />
               {chartData.map((d, i) => (
                 <g key={`t${i}`}>
                   <circle
                     cx={40 + i * (520 / Math.max(chartData.length - 1, 1))}
-                    cy={170 - (d.temperature / maxTemp) * 140}
+                    cy={170 - ((d.temperature ?? 0) / maxTemp) * 140}
                     r="3" fill="#ef4444"
                   />
                   <text
                     x={40 + i * (520 / Math.max(chartData.length - 1, 1))}
-                    y={170 - (d.temperature / maxTemp) * 140 - 8}
+                    y={170 - ((d.temperature ?? 0) / maxTemp) * 140 - 8}
                     textAnchor="middle" fontSize="9" fill="#ef4444"
                   >{d.temperature}°</text>
                 </g>
@@ -302,15 +302,15 @@ export default function SiteDetail() {
                 <g key={`r${i}`}>
                   <rect
                     x={40 + i * (520 / Math.max(chartData.length - 1, 1)) - 8}
-                    y={170 - (d.rainfall / maxRain) * 60}
+                    y={170 - ((d.rainfall ?? 0) / maxRain) * 60}
                     width="16"
-                    height={(d.rainfall / maxRain) * 60}
+                    height={((d.rainfall ?? 0) / maxRain) * 60}
                     fill="#3b82f6" opacity="0.4" rx="2"
                   />
-                  {d.rainfall > 0 && (
+                  {(d.rainfall ?? 0) > 0 && (
                     <text
                       x={40 + i * (520 / Math.max(chartData.length - 1, 1))}
-                      y={170 - (d.rainfall / maxRain) * 60 - 4}
+                      y={170 - ((d.rainfall ?? 0) / maxRain) * 60 - 4}
                       textAnchor="middle" fontSize="8" fill="#3b82f6"
                     >{d.rainfall}mm</text>
                   )}
