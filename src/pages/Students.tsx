@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getStudents, createStudent, deleteStudent } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import type { Student, DegreeType, StudentStatus } from '../types'
 
 const DEGREE_OPTIONS: DegreeType[] = ['硕士', '博士', '博士后']
@@ -44,6 +45,7 @@ const emptyForm: FormData = {
 }
 
 export default function Students() {
+  const { user } = useAuth()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -108,6 +110,17 @@ export default function Students() {
     if (!confirm(`确定要删除学生「${name}」吗？此操作不可撤销。`)) return
     await deleteStudent(id)
     setStudents((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  if (user?.role === 'student') {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-700">无权限</p>
+          <p className="text-sm text-gray-400 mt-2">您没有访问此页面的权限</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FileText, Search, Plus, X, Clock, BarChart3, BookOpen, Edit2, Trash2, Layers, CalendarDays } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import type { Paper, PaperPartition, PaperStatus } from '../types'
 
 const STATUS_COLORS: Record<PaperStatus, string> = {
@@ -98,6 +99,8 @@ function toPaper(row: any, timeline: { date: string; event: string }[]): Paper {
 }
 
 export default function Papers() {
+  const { user } = useAuth()
+  const isStudent = user?.role === 'student'
   const [papers, setPapers] = useState<Paper[]>([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')
@@ -153,6 +156,7 @@ export default function Papers() {
   }, [])
 
   const filtered = papers.filter((p) => {
+    if (isStudent && user && !(p.authors || '').includes(user.name)) return false
     if (filterStatus && p.status !== filterStatus) return false
     if (
       search &&
@@ -366,14 +370,16 @@ export default function Papers() {
           </p>
           <p className="text-gray-500 text-sm mt-1">共 {papers.length} 篇论文</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-        >
-          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? '取消' : '添加论文'}
-        </button>
+        {!isStudent && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+          >
+            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {showForm ? '取消' : '添加论文'}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -514,23 +520,27 @@ export default function Papers() {
                       <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
                         {paper.status}
                       </span>
-                      <button
-                        type="button"
-                        title="编辑论文"
-                        onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
-                        className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        title="删除论文"
-                        disabled={deletingId === paper.id}
-                        onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
-                        className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isStudent && (
+                        <>
+                          <button
+                            type="button"
+                            title="编辑论文"
+                            onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
+                            className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="删除论文"
+                            disabled={deletingId === paper.id}
+                            onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
+                            className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -583,23 +593,27 @@ export default function Papers() {
                       <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
                         {paper.status}
                       </span>
-                      <button
-                        type="button"
-                        title="编辑论文"
-                        onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
-                        className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        title="删除论文"
-                        disabled={deletingId === paper.id}
-                        onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
-                        className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isStudent && (
+                        <>
+                          <button
+                            type="button"
+                            title="编辑论文"
+                            onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
+                            className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="删除论文"
+                            disabled={deletingId === paper.id}
+                            onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
+                            className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

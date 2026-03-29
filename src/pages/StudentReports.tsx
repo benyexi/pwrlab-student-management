@@ -15,6 +15,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import type { Report, ReportRow, Student } from '../types'
 
 type ReportFormState = {
@@ -82,6 +83,7 @@ function makeDefaultForm(): ReportFormState {
 }
 
 export default function StudentReports() {
+  const { user } = useAuth()
   const { studentId } = useParams<{ studentId: string }>()
   const navigate = useNavigate()
 
@@ -382,6 +384,25 @@ export default function StudentReports() {
     )
   }
 
+  if (user?.role === 'student' && student.email !== user.email && student.name !== user.name) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => navigate('/reports')}
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          返回周报列表
+        </button>
+        <div className="text-center py-12 text-gray-400 bg-white rounded-xl border shadow-sm">
+          <User className="w-10 h-10 mx-auto mb-3 opacity-50" />
+          <p className="font-semibold text-gray-700">无权限</p>
+          <p className="text-sm mt-1">您只能查看自己的周报</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -593,28 +614,30 @@ export default function StudentReports() {
                   )}
 
                   {/* Advisor comment section */}
-                  {report.advisor_comment && commentingId !== report.id && (
+                  {report.advisor_comment && (
                     <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-xs font-medium text-blue-700">导师批注</div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setCommentingId(report.id)
-                            setCommentText(report.advisor_comment || '')
-                          }}
-                          className="p-1 rounded hover:bg-blue-100 text-blue-500 transition-colors"
-                          title="编辑批注"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+                        {user?.role !== 'student' && commentingId !== report.id && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCommentingId(report.id)
+                              setCommentText(report.advisor_comment || '')
+                            }}
+                            className="p-1 rounded hover:bg-blue-100 text-blue-500 transition-colors"
+                            title="编辑批注"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                       <p className="text-sm text-blue-800 whitespace-pre-wrap">{report.advisor_comment}</p>
                     </div>
                   )}
 
-                  {!report.advisor_comment && commentingId !== report.id && (
+                  {user?.role !== 'student' && !report.advisor_comment && commentingId !== report.id && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -629,7 +652,7 @@ export default function StudentReports() {
                     </button>
                   )}
 
-                  {commentingId === report.id && (
+                  {user?.role !== 'student' && commentingId === report.id && (
                     <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
                       <div className="text-xs font-medium text-blue-700">
                         {report.advisor_comment ? '编辑批注' : '添加批注'}

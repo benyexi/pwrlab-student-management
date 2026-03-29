@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { Session, User as SupabaseUser } from '@supabase/supabase-js'
+import { User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { Role, User } from '../types'
 
@@ -49,14 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser({
         id: su.id,
         email: data?.email || su.email || '',
-        role: (data?.role || 'admin') as Role,
+        role: (data?.role || 'student') as Role,
         name: data?.name || su.email?.split('@')[0] || 'User',
       })
     } catch {
       setUser({
         id: su.id,
         email: su.email || '',
-        role: 'admin' as Role,
+        role: 'student' as Role,
         name: su.email?.split('@')[0] || 'User',
       })
     } finally {

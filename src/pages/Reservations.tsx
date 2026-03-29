@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Wrench, Search, Plus, X, Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import type { Reservation, Instrument } from '../types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -18,6 +19,7 @@ const INSTRUMENT_STATUS_COLORS: Record<string, string> = {
 }
 
 export default function Reservations() {
+  const { user } = useAuth()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [instruments, setInstruments] = useState<Instrument[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -116,8 +118,8 @@ export default function Reservations() {
       const payload: Omit<Reservation, 'id'> = {
         instrument_id: form.instrument_id,
         instrument_name: inst.name,
-        student_id: 'current',
-        student_name: '当前用户',
+        student_id: user?.id || 'unknown',
+        student_name: user?.name || '未知用户',
         start_date: form.start_date,
         end_date: form.end_date,
         purpose: form.purpose,

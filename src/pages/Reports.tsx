@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, GraduationCap, BookOpen, CalendarDays, ArrowRight, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import type { ReportRow, Student } from '../types'
 
 type StudentReportCard = {
@@ -51,6 +52,7 @@ function buildRequiredWeeks(startDate: Date, endDate: Date) {
 }
 
 export default function Reports() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [students, setStudents] = useState<Student[]>([])
   const [reports, setReports] = useState<ReportRow[]>([])
@@ -152,6 +154,7 @@ export default function Reports() {
     }
 
     const filteredStudents = students.filter((student) => {
+      if (user?.role === 'student' && student.name !== user.name) return false
       if (!search.trim()) return true
       const keyword = search.trim().toLowerCase()
       return (

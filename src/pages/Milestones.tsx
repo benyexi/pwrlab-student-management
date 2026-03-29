@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Flag, Search, AlertTriangle, CheckCircle, Clock, CircleDot, User } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import type { Milestone, MilestoneStatus, MilestoneType } from '../types'
 
 const STATUS_CONFIG: Record<MilestoneStatus, { color: string; icon: typeof CheckCircle }> = {
@@ -13,6 +14,8 @@ const STATUS_CONFIG: Record<MilestoneStatus, { color: string; icon: typeof Check
 const TYPE_ORDER: MilestoneType[] = ['开题', '中期', '预答辩', '答辩', '论文提交']
 
 export default function Milestones() {
+  const { user } = useAuth()
+  const isStudent = user?.role === 'student'
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')
@@ -80,6 +83,7 @@ export default function Milestones() {
   }
 
   const filtered = milestones.filter((m) => {
+    if (isStudent && m.student_name !== user?.name) return false
     if (filterStatus && getDisplayStatus(m) !== filterStatus) return false
     if (search && !m.student_name.includes(search) && !m.type.includes(search)) return false
     return true
@@ -98,7 +102,10 @@ export default function Milestones() {
   }, [filtered])
 
   // Upcoming milestones
-  const upcoming = milestones.filter((m) => getDisplayStatus(m) !== '已完成' && isUpcoming(m.planned_date))
+  const upcoming = milestones.filter((m) => {
+    if (isStudent && m.student_name !== user?.name) return false
+    return getDisplayStatus(m) !== '已完成' && isUpcoming(m.planned_date)
+  })
 
   return (
     <div className="space-y-6">
