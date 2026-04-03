@@ -346,8 +346,24 @@ export default function Projects() {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
+      {/* Empty state */}
+      {projects.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <FolderKanban className="w-16 h-16 text-gray-200 mb-4" />
+          <h3 className="text-lg font-medium text-gray-400 mb-1">暂无课题</h3>
+          <p className="text-sm text-gray-300 mb-6">还没有任何研究课题记录</p>
+          {isAdmin && (
+            <button onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm text-white rounded-lg"
+              style={{ backgroundColor: '#1a3a2a' }}>
+              <Plus className="w-4 h-4" /> 添加第一个课题
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Kanban Board */}
-      <div className="overflow-x-auto pb-4 -mx-4 px-4 -webkit-overflow-scrolling-touch">
+      {projects.length > 0 && <div className="overflow-x-auto pb-4 -mx-4 px-4 -webkit-overflow-scrolling-touch">
         <div className="flex gap-3" style={{ minWidth: `${STAGES.length * 200}px` }}>
           {STAGES.map(stage => {
             const cards = grouped[stage] || []
@@ -430,14 +446,14 @@ export default function Projects() {
                     {STAGES.indexOf(selectedProject.stage) > 0 && (
                       <button onClick={() => changeStage(selectedProject, STAGES[STAGES.indexOf(selectedProject.stage) - 1])}
                         disabled={savingId === selectedProject.id}
-                        className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                        className="flex items-center gap-1 px-3 min-h-[44px] text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50">
                         <ChevronLeft className="w-4 h-4" /> 回退
                       </button>
                     )}
                     {STAGES.indexOf(selectedProject.stage) < STAGES.length - 1 && (
                       <button onClick={() => changeStage(selectedProject, STAGES[STAGES.indexOf(selectedProject.stage) + 1])}
                         disabled={savingId === selectedProject.id}
-                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-50"
+                        className="flex items-center gap-1 px-3 min-h-[44px] text-sm text-white rounded-lg disabled:opacity-50"
                         style={{ backgroundColor: '#1a3a2a' }}>
                         推进 <ChevronRight className="w-4 h-4" />
                       </button>

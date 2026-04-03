@@ -422,7 +422,7 @@ export default function FieldData() {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50"
+              className="px-6 py-2 min-h-[44px] bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50"
             >
               {submitting ? '保存中...' : '提交'}
             </button>
@@ -460,7 +460,7 @@ export default function FieldData() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
             <tr>
               <th className="px-4 py-3 text-left">日期</th>

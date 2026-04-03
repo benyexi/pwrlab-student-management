@@ -227,7 +227,7 @@ export default function Reservations() {
                 <input type="text" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="预约用途" required />
               </div>
             </div>
-            <button type="submit" disabled={saving} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50">
+            <button type="submit" disabled={saving} className="px-6 py-2 min-h-[44px] bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50">
               {saving ? '提交中...' : '提交预约'}
             </button>
           </form>
@@ -242,10 +242,10 @@ export default function Reservations() {
           </h2>
           <div className="flex items-center gap-2">
             <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
-              className="p-1.5 hover:bg-gray-100 rounded"><ChevronLeft className="w-4 h-4" /></button>
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-gray-100 rounded"><ChevronLeft className="w-4 h-4" /></button>
             <span className="text-sm font-medium min-w-[120px] text-center">{monthName}</span>
             <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
-              className="p-1.5 hover:bg-gray-100 rounded"><ChevronRight className="w-4 h-4" /></button>
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-gray-100 rounded"><ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>
         <div className="overflow-x-auto">

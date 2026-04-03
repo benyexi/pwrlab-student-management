@@ -526,7 +526,7 @@ export default function Papers() {
                             type="button"
                             title="编辑论文"
                             onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
-                            className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -535,7 +535,7 @@ export default function Papers() {
                             title="删除论文"
                             disabled={deletingId === paper.id}
                             onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
-                            className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -599,7 +599,7 @@ export default function Papers() {
                             type="button"
                             title="编辑论文"
                             onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
-                            className="p-1.5 rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -608,7 +608,7 @@ export default function Papers() {
                             title="删除论文"
                             disabled={deletingId === paper.id}
                             onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
-                            className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
