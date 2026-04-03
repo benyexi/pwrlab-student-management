@@ -88,6 +88,10 @@ export default function StudentReports() {
   const { studentId } = useParams<{ studentId: string }>()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    document.title = student ? `${student.name}的周报 | PWRlab` : '周报详情 | PWRlab'
+  }, [student])
+
   const [student, setStudent] = useState<Student | null>(null)
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)

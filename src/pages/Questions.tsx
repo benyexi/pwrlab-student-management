@@ -17,6 +17,8 @@ export default function Questions() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
 
+  useEffect(() => { document.title = '问答 | PWRlab' }, [])
+
   const [questions, setQuestions] = useState<Question[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)

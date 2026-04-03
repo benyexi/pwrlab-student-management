@@ -46,6 +46,8 @@ const emptyForm: FormData = {
 
 export default function Students() {
   const { user } = useAuth()
+  useEffect(() => { document.title = '学生管理 | PWRlab' }, [])
+
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')

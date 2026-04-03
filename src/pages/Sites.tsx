@@ -23,6 +23,8 @@ export default function Sites() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => { document.title = '监测站点 | PWRlab' }, [])
+
   useEffect(() => {
     let active = true
 

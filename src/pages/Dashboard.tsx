@@ -49,6 +49,8 @@ export default function Dashboard() {
   const [myMilestones, setMyMilestones] = useState<{ id: string; type: string; status: string; planned_date: string; student_id?: string; student_name?: string }[]>([])
   const [loading, setLoading] = useState(true)
 
+  useEffect(() => { document.title = '仪表盘 | PWRlab' }, [])
+
   useEffect(() => {
     if (user?.role === 'student') {
       Promise.all([

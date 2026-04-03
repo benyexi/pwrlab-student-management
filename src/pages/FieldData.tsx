@@ -126,6 +126,8 @@ function mapObservation(row: FieldObservationRow, siteName: string): FieldObserv
 }
 
 export default function FieldData() {
+  useEffect(() => { document.title = '野外数据采集 | PWRlab' }, [])
+
   const [sites, setSites] = useState<Site[]>([])
   const [observations, setObservations] = useState<FieldObservation[]>([])
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])

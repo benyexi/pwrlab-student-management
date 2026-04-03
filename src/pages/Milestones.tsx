@@ -16,6 +16,8 @@ const TYPE_ORDER: MilestoneType[] = ['开题', '中期', '预答辩', '答辩', 
 export default function Milestones() {
   const { user } = useAuth()
   const isStudent = user?.role === 'student'
+  useEffect(() => { document.title = '毕业节点 | PWRlab' }, [])
+
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')

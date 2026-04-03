@@ -27,6 +27,10 @@ export default function StudentDetail() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    document.title = student ? `${student.name} | PWRlab` : '学生详情 | PWRlab'
+  }, [student])
+
+  useEffect(() => {
     if (!id) return
     getStudent(id).then(({ data, error }) => {
       if (error || !data) {

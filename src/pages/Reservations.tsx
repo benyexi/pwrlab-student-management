@@ -20,6 +20,8 @@ const INSTRUMENT_STATUS_COLORS: Record<string, string> = {
 
 export default function Reservations() {
   const { user } = useAuth()
+  useEffect(() => { document.title = '仪器预约 | PWRlab' }, [])
+
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [instruments, setInstruments] = useState<Instrument[]>([])
   const [showForm, setShowForm] = useState(false)

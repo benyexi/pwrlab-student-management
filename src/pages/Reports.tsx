@@ -55,6 +55,8 @@ function buildRequiredWeeks(startDate: Date, endDate: Date) {
 export default function Reports() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  useEffect(() => { document.title = '周报管理 | PWRlab' }, [])
+
   const [students, setStudents] = useState<Student[]>([])
   const [reports, setReports] = useState<ReportRow[]>([])
   const [search, setSearch] = useState('')

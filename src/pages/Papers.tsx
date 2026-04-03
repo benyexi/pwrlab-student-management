@@ -101,6 +101,8 @@ function toPaper(row: any, timeline: { date: string; event: string }[]): Paper {
 export default function Papers() {
   const { user } = useAuth()
   const isStudent = user?.role === 'student'
+  useEffect(() => { document.title = '论文管理 | PWRlab' }, [])
+
   const [papers, setPapers] = useState<Paper[]>([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('')

@@ -43,6 +43,8 @@ export default function Projects() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
 
+  useEffect(() => { document.title = '研究进展 | PWRlab' }, [])
+
   const [projects, setProjects] = useState<Project[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [sites, setSites] = useState<Site[]>([])

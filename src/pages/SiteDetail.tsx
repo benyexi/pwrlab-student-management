@@ -67,6 +67,10 @@ export default function SiteDetail() {
   const [form, setForm] = useState(EMPTY_FORM)
 
   useEffect(() => {
+    document.title = site ? `${site.name_cn} | PWRlab` : '站点详情 | PWRlab'
+  }, [site])
+
+  useEffect(() => {
     let active = true
 
     async function fetchData() {
