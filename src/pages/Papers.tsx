@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileText, Search, Plus, X, Clock, BarChart3, BookOpen, Edit2, Trash2, Layers, CalendarDays } from 'lucide-react'
+import { FileText, Search, Plus, X, BarChart3, BookOpen, Edit2, Trash2, Layers, CalendarDays } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Paper, PaperPartition, PaperStatus } from '../types'
