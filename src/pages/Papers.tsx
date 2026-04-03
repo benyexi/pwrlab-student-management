@@ -644,9 +644,23 @@ export default function Papers() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
-          <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>没有找到匹配的论文</p>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <FileText className="w-16 h-16 text-gray-200 mb-4" />
+          <h3 className="text-lg font-medium text-gray-400 mb-1">
+            {papers.length === 0 ? '暂无论文记录' : '没有找到匹配的论文'}
+          </h3>
+          <p className="text-sm text-gray-300 mb-6">
+            {papers.length === 0 ? '点击"添加论文"开始记录研究成果' : '尝试调整搜索或筛选条件'}
+          </p>
+          {papers.length === 0 && !isStudent && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm text-white rounded-lg"
+              style={{ backgroundColor: '#1a3a2a' }}
+            >
+              <Plus className="w-4 h-4" /> 添加第一篇论文
+            </button>
+          )}
         </div>
       )}
 

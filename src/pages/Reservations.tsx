@@ -177,6 +177,12 @@ export default function Reservations() {
         <div className="rounded-xl border bg-white p-8 text-center text-gray-400">
           正在加载仪器和预约数据...
         </div>
+      ) : instruments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border">
+          <Wrench className="w-12 h-12 text-gray-200 mb-3" />
+          <h3 className="text-base font-medium text-gray-400 mb-1">暂无仪器设备</h3>
+          <p className="text-sm text-gray-300">请联系管理员录入仪器信息</p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {instruments.map((inst) => (

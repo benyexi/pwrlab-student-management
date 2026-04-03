@@ -498,7 +498,17 @@ export default function FieldData() {
             })}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="text-center py-12 text-gray-400">暂无数据</div>}
+        {filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Droplets className="w-12 h-12 text-gray-200 mb-3" />
+            <p className="text-base font-medium text-gray-400">
+              {observations.length === 0 ? '暂无野外观测记录' : '没有找到匹配的数据'}
+            </p>
+            <p className="text-sm text-gray-300 mt-1">
+              {observations.length === 0 ? '点击"录入数据"添加第一条记录' : '尝试调整筛选条件'}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
