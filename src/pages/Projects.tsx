@@ -415,7 +415,7 @@ export default function Projects() {
             )
           })}
         </div>
-      </div>
+      </div>}
 
       {/* Detail Modal */}
       {selectedProject && (
