@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS students (
   name TEXT NOT NULL,
   student_id TEXT UNIQUE,
   enrollment_year INTEGER,
-  degree_type TEXT CHECK (degree_type IN ('硕士', '博士', '博后')),
+  degree_type TEXT CHECK (degree_type IN ('硕士', '博士', '博士后')),
   research_direction TEXT,
   expected_graduation TEXT,
   status TEXT DEFAULT '在读' CHECK (status IN ('在读', '已毕业', '已离组')),
@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS reports (
   week_end DATE,
   content TEXT,
   advisor_comment TEXT,
+  next_week_plan TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -141,7 +142,8 @@ CREATE TABLE IF NOT EXISTS milestones (
   type TEXT CHECK (type IN ('开题', '中期', '预答辩', '答辩', '论文提交')),
   planned_date DATE,
   actual_date DATE,
-  status TEXT DEFAULT '未开始' CHECK (status IN ('未开始', '进行中', '已完成')),
+  status TEXT DEFAULT '未开始' CHECK (status IN ('未开始', '进行中', '已完成', '已逾期')),
+  notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

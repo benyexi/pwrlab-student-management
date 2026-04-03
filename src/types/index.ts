@@ -2,7 +2,7 @@ export type Role = 'admin' | 'student'
 
 export type DegreeType = '硕士' | '博士' | '博士后'
 
-export type StudentStatus = '在读' | '已毕业'
+export type StudentStatus = '在读' | '已毕业' | '已离组'
 
 export interface Student {
   id: string

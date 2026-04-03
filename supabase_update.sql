@@ -8,7 +8,7 @@ ALTER TABLE projects
   ADD COLUMN IF NOT EXISTS stage_entered_at TIMESTAMPTZ DEFAULT now(),
   ADD COLUMN IF NOT EXISTS stage_history JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS advisor_notes TEXT,
-  ADD COLUMN IF NOT EXISTS site_id UUID REFERENCES sites(id);
+  ADD COLUMN IF NOT EXISTS site_id TEXT REFERENCES sites(id);
 
 -- Backfill stage_entered_at for existing rows
 UPDATE projects
