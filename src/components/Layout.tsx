@@ -203,8 +203,21 @@ export default function Layout() {
           <NotificationPanel />
         </header>
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto relative" style={{
+          backgroundColor: '#f5f3ef',
+          backgroundImage: `
+            linear-gradient(rgba(26,58,42,0.07) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(26,58,42,0.07) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}>
+          {/* Decorative top gradient band */}
+          <div className="absolute top-0 left-0 right-0 h-48 pointer-events-none" style={{
+            background: 'linear-gradient(180deg, rgba(15,42,28,0.10) 0%, rgba(15,42,28,0.03) 60%, transparent 100%)',
+          }} />
+          <div className="relative p-4 lg:p-6">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
