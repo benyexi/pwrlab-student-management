@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +15,8 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply text-gray-900 antialiased;
+    background-color: #f5f3ef;
     min-height: 100vh;
   }
 
@@ -23,6 +26,10 @@
 }
 
 @layer components {
+  .serif-cn {
+    font-family: 'Noto Serif SC', 'SimSun', 'STSong', 'Georgia', serif;
+  }
+
   .btn-primary {
     @apply inline-flex items-center justify-center px-4 py-2 rounded-lg
            bg-primary-700 text-white font-medium text-sm

@@ -23,34 +23,70 @@ function computeStats(students: Student[]): DashboardStats {
   }
 }
 
-function StatCard({
+/** Large dark card for hero metrics */
+function HeroCard({ label, value, sub, icon: Icon }: { label: string; value: number; sub?: string; icon: ElementType }) {
+  return (
+    <div
+      className="relative rounded-2xl p-7 overflow-hidden"
+      style={{
+        background: 'linear-gradient(145deg, #132d22 0%, #1e4530 100%)',
+        boxShadow: '0 16px 48px rgba(13,36,23,0.28)',
+      }}
+    >
+      {/* Subtle grid texture */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.04]" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id={`hg-${label}`} width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill={`url(#hg-${label})`} />
+      </svg>
+      {/* Glow */}
+      <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(74,222,128,0.12), transparent 70%)' }} />
+
+      <div className="relative z-10 flex items-end justify-between">
+        <div>
+          <p className="text-xs tracking-[0.2em] uppercase text-green-400/50 font-medium">{label}</p>
+          <p
+            className="font-bold mt-3 leading-none"
+            style={{ fontSize: '3.75rem', color: '#d4a853', fontVariantNumeric: 'tabular-nums' }}
+          >
+            {value}
+          </p>
+          {sub && <p className="text-green-300/40 text-sm mt-2">{sub}</p>}
+        </div>
+        <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.12)' }}>
+          <Icon className="w-6 h-6 text-green-400/50" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Smaller clean card for secondary metrics */
+function MiniCard({
   label,
   value,
-  sub,
-  color,
-  borderColor,
-  bgColor,
+  accentColor,
   icon: Icon,
 }: {
   label: string
   value: number
-  sub?: string
-  color: string
-  borderColor: string
-  bgColor: string
+  accentColor: string
   icon: ElementType
 }) {
   return (
-    <div className={`relative bg-white rounded-2xl shadow-sm border border-gray-100 border-l-4 ${borderColor} p-5 overflow-hidden`}>
+    <div
+      className="bg-white rounded-2xl p-5 relative overflow-hidden"
+      style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)', borderTop: `3px solid ${accentColor}` }}
+    >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</p>
-          <p className={`text-4xl font-bold mt-2 ${color}`}>{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-400">{label}</p>
+          <p className="text-4xl font-bold text-gray-900 mt-2" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</p>
         </div>
-        <div className={`p-2.5 rounded-xl ${bgColor}`}>
-          <Icon className={`w-5 h-5 ${color}`} />
-        </div>
+        <Icon className="w-5 h-5 mt-0.5" style={{ color: accentColor, opacity: 0.6 }} />
       </div>
     </div>
   )
@@ -120,6 +156,8 @@ export default function Dashboard() {
 
   const stats = computeStats(students)
   const recent = [...students].slice(0, 5)
+  const yearEntries = Object.entries(stats.byYear).sort(([a], [b]) => Number(b) - Number(a))
+  const maxCount = Math.max(...yearEntries.map(([, c]) => c), 1)
 
   if (loading) {
     return (
@@ -134,7 +172,7 @@ export default function Dashboard() {
     return (
       <div className="space-y-6 max-w-5xl mx-auto">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">个人概览</h1>
+          <h1 className="text-xl font-bold text-gray-900 serif-cn">个人概览</h1>
           <p className="text-sm text-gray-500 mt-0.5">{user.name} 的学习与科研进展</p>
         </div>
         {!myStudent ? (
@@ -207,58 +245,71 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Page title */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">概览</h1>
-        <p className="text-sm font-medium text-gray-500 mt-0.5">PWR Lab 学生整体情况</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 serif-cn">概览</h1>
+          <p className="text-sm text-gray-400 mt-0.5 tracking-wide">PWR Lab · 学生整体情况</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          实时数据
+        </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <StatCard label="学生总数" value={stats.total} icon={Users} color="text-primary-700" borderColor="border-primary-500" bgColor="bg-primary-50" />
-        <StatCard label="在读" value={stats.active} sub="当前在籍" icon={BookOpen} color="text-green-600" borderColor="border-green-400" bgColor="bg-green-50" />
-        <StatCard label="已毕业" value={stats.graduated} icon={GraduationCap} color="text-gray-500" borderColor="border-gray-300" bgColor="bg-gray-50" />
-        <StatCard label="硕士" value={stats.masters} icon={FlaskConical} color="text-blue-600" borderColor="border-blue-400" bgColor="bg-blue-50" />
-        <StatCard label="博士" value={stats.phd} icon={Microscope} color="text-purple-600" borderColor="border-purple-400" bgColor="bg-purple-50" />
-        <StatCard label="博士后" value={stats.postdoc} icon={Beaker} color="text-amber-600" borderColor="border-amber-400" bgColor="bg-amber-50" />
+      {/* Hero stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <HeroCard label="学生总数" value={stats.total} sub="全部在册学生" icon={Users} />
+        <HeroCard label="当前在读" value={stats.active} sub="当前在籍" icon={BookOpen} />
+      </div>
+
+      {/* Mini stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniCard label="已毕业" value={stats.graduated} accentColor="#9ca3af" icon={GraduationCap} />
+        <MiniCard label="硕士" value={stats.masters} accentColor="#3b82f6" icon={FlaskConical} />
+        <MiniCard label="博士" value={stats.phd} accentColor="#8b5cf6" icon={Microscope} />
+        <MiniCard label="博士后" value={stats.postdoc} accentColor="#f59e0b" icon={Beaker} />
       </div>
 
       {/* Enrollment by year */}
-      {Object.keys(stats.byYear).length > 0 && (
-        <div className="card p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">各年级人数</h2>
-          <div className="space-y-2">
-            {Object.entries(stats.byYear)
-              .sort(([a], [b]) => Number(b) - Number(a))
-              .map(([year, count]) => (
-                <div key={year} className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-600 w-12 flex-shrink-0">{year}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-3">
-                    <div
-                      className="h-3 rounded-full transition-all"
-                      style={{
-                        width: `${(count / stats.total) * 100}%`,
-                        background: 'linear-gradient(90deg, #1a3a2a, #4da37c)',
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm font-bold text-gray-700 w-6 text-right">{count}</span>
+      {yearEntries.length > 0 && (
+        <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+          <h2 className="text-sm font-semibold text-gray-700 mb-5 serif-cn">各年级人数</h2>
+          <div className="space-y-3">
+            {yearEntries.map(([year, count]) => (
+              <div key={year} className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-500 w-10 flex-shrink-0 tabular-nums">{year}</span>
+                <div className="flex-1 bg-gray-100 rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full transition-all duration-700"
+                    style={{
+                      width: `${(count / maxCount) * 100}%`,
+                      background: 'linear-gradient(90deg, #1a3a2a 0%, #4da37c 100%)',
+                    }}
+                  />
                 </div>
-              ))}
+                <span
+                  className="text-sm font-bold w-5 text-right tabular-nums"
+                  style={{ color: count === maxCount ? '#d4a853' : '#374151' }}
+                >
+                  {count}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Recent students */}
-      <div className="card overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-bold text-gray-800 tracking-wide">最近添加的学生</h2>
-          <Link to="/students" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+      <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-bold text-gray-800 serif-cn">最近添加的学生</h2>
+          <Link to="/students" className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors">
             查看全部 →
           </Link>
         </div>
 
         {recent.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-gray-400">
+          <div className="px-6 py-10 text-center text-sm text-gray-400">
             暂无学生数据，
             <Link to="/students" className="text-primary-600 hover:underline">去添加</Link>
           </div>
@@ -268,14 +319,17 @@ export default function Dashboard() {
               <Link
                 key={s.id}
                 to={`/students/${s.id}`}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-primary-50/50 transition-colors"
+                className="flex items-center gap-4 px-6 py-4 hover:bg-[#f5f3ef] transition-colors group"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm shadow-sm">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
+                  style={{ background: 'linear-gradient(135deg, #1a3a2a 0%, #4da37c 100%)', boxShadow: '0 2px 8px rgba(26,58,42,0.3)' }}
+                >
                   {s.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{s.research_direction}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-primary-700 transition-colors">{s.name}</p>
+                  <p className="text-xs text-gray-400 truncate mt-0.5">{s.research_direction}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className={degreeColor[s.degree_type] ?? 'badge-gray'}>{s.degree_type}</span>

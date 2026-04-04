@@ -82,7 +82,7 @@ export default function Layout() {
     }`
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{ backgroundColor: '#f5f3ef' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -95,21 +95,39 @@ export default function Layout() {
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } bg-[#132d22]`}
+        }`}
+        style={{ background: 'linear-gradient(180deg, #0f2a1c 0%, #1a3a2a 50%, #0d2417 100%)' }}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative overflow-hidden">
+          {/* Decorative background trees */}
+          <svg className="absolute bottom-0 left-0 right-0 w-full opacity-[0.06] pointer-events-none" viewBox="0 0 256 120" preserveAspectRatio="xMidYMax meet">
+            <polygon points="60,120 80,70 100,120" fill="white"/>
+            <polygon points="55,100 80,50 105,100" fill="white"/>
+            <polygon points="50,110 80,35 110,110" fill="white"/>
+            <rect x="77" y="110" width="6" height="10" fill="white"/>
+            <polygon points="140,120 158,78 176,120" fill="white"/>
+            <polygon points="136,104 158,62 180,104" fill="white"/>
+            <polygon points="132,115 158,48 184,115" fill="white"/>
+            <rect x="155" y="110" width="6" height="10" fill="white"/>
+            <polygon points="195,120 210,85 225,120" fill="white"/>
+            <polygon points="192,108 210,72 228,108" fill="white"/>
+            <rect x="207" y="110" width="6" height="10" fill="white"/>
+          </svg>
+
           {/* Logo */}
-          <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-            <TreePine
-              className="w-8 h-8 text-green-300"
-              style={{ filter: 'drop-shadow(0 0 10px rgba(74, 222, 128, 0.45))' }}
-            />
+          <div className="flex items-center gap-3 px-5 py-5 border-b border-white/[0.08]">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.2)' }}
+            >
+              <TreePine className="w-5 h-5 text-green-400" />
+            </div>
             <div>
-              <h1 className="text-white font-bold text-lg leading-tight">PWRLab</h1>
-              <p className="text-green-300 text-xs">学生管理系统</p>
+              <h1 className="text-white font-bold text-base leading-tight tracking-wide">PWRLab</h1>
+              <p className="text-green-400/50 text-[10px] tracking-[0.15em] uppercase">学生管理系统</p>
             </div>
             <button
-              className="ml-auto lg:hidden text-white"
+              className="ml-auto lg:hidden text-white/60 hover:text-white p-1"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="w-5 h-5" />
@@ -117,10 +135,10 @@ export default function Layout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          <nav className="flex-1 px-3 py-5 space-y-5 overflow-y-auto">
             {navGroups.map((group) => (
               <div key={group.label}>
-                <p className="px-4 mb-1 uppercase font-medium text-green-400/50 text-[10px] tracking-[0.15em]">
+                <p className="px-3 mb-1.5 uppercase font-semibold text-green-400/30 text-[9px] tracking-[0.22em]">
                   {group.label}
                 </p>
                 <div className="space-y-0.5">
@@ -131,7 +149,7 @@ export default function Layout() {
                       className={linkClass}
                       onClick={() => setSidebarOpen(false)}
                     >
-                      <item.icon className="w-4 h-4" />
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
                       {item.label}
                     </NavLink>
                   ))}
@@ -141,16 +159,25 @@ export default function Layout() {
           </nav>
 
           {/* User info & sign out */}
-          <div className="px-4 py-4 border-t border-white/10">
-            <div className="bg-black/20 rounded-xl px-3 py-3 mx-1">
-              <div className="text-green-200 text-sm mb-2 truncate">
-                {user?.name} ({user?.role === 'admin' ? '导师' : '学生'})
+          <div className="relative z-10 px-3 py-4 border-t border-white/[0.08]">
+            <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(0,0,0,0.25)' }}>
+              <div className="flex items-center gap-2.5 mb-2.5">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #1a3a2a, #4da37c)' }}
+                >
+                  {user?.name?.charAt(0) ?? '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-green-100 text-xs font-medium truncate">{user?.name}</p>
+                  <p className="text-green-400/40 text-[10px]">{user?.role === 'admin' ? '导师' : '学生'}</p>
+                </div>
               </div>
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 text-green-300 hover:text-white transition-colors text-sm"
+                className="flex items-center gap-2 text-green-400/50 hover:text-green-300 transition-colors text-xs w-full"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
                 退出登录
               </button>
             </div>
