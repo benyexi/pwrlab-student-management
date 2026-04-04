@@ -203,17 +203,42 @@ export default function Layout() {
           <NotificationPanel />
         </header>
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto relative" style={{
-          backgroundColor: '#f5f3ef',
-          backgroundImage: `
-            linear-gradient(rgba(26,58,42,0.07) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(26,58,42,0.07) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}>
-          {/* Decorative top gradient band */}
-          <div className="absolute top-0 left-0 right-0 h-48 pointer-events-none" style={{
-            background: 'linear-gradient(180deg, rgba(15,42,28,0.10) 0%, rgba(15,42,28,0.03) 60%, transparent 100%)',
+        <main className="flex-1 overflow-y-auto relative" style={{ backgroundColor: '#f5f3ef' }}>
+          {/* Topographic contour background — echoes field research terrain */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="xMidYMid slice"
+            style={{ opacity: 0.055 }}
+          >
+            <defs>
+              <pattern id="topo" x="0" y="0" width="520" height="360" patternUnits="userSpaceOnUse">
+                {/* Contour set A */}
+                <path d="M-40,180 C60,120 160,200 260,150 C360,100 420,170 560,140" stroke="#1a3a2a" strokeWidth="1.2" fill="none"/>
+                <path d="M-40,210 C50,155 150,235 260,185 C370,135 430,205 560,175" stroke="#1a3a2a" strokeWidth="0.9" fill="none"/>
+                <path d="M-40,240 C60,190 160,270 260,220 C360,170 430,240 560,208" stroke="#1a3a2a" strokeWidth="0.7" fill="none"/>
+                {/* Contour set B — upper region */}
+                <path d="M-40,80 C80,40 180,110 300,65 C400,25 460,80 560,55" stroke="#1a3a2a" strokeWidth="1.0" fill="none"/>
+                <path d="M-40,108 C80,68 180,138 300,95 C400,55 460,108 560,82" stroke="#1a3a2a" strokeWidth="0.7" fill="none"/>
+                {/* Contour set C — lower region */}
+                <path d="M-40,290 C70,250 170,320 280,278 C390,235 450,295 560,268" stroke="#1a3a2a" strokeWidth="0.9" fill="none"/>
+                <path d="M-40,318 C70,280 170,348 280,308 C390,265 450,325 560,298" stroke="#1a3a2a" strokeWidth="0.6" fill="none"/>
+                {/* Elevation tick marks */}
+                <line x1="130" y1="118" x2="130" y2="128" stroke="#1a3a2a" strokeWidth="0.8"/>
+                <line x1="310" y1="88" x2="310" y2="98" stroke="#1a3a2a" strokeWidth="0.8"/>
+                <line x1="240" y1="158" x2="240" y2="168" stroke="#1a3a2a" strokeWidth="0.8"/>
+                <line x1="420" y1="198" x2="420" y2="208" stroke="#1a3a2a" strokeWidth="0.8"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#topo)"/>
+          </svg>
+          {/* Soft radial depth — warm glow from top, subtle corner shadows */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: `
+              radial-gradient(ellipse 110% 55% at 50% -5%, rgba(15,42,28,0.09) 0%, transparent 65%),
+              radial-gradient(ellipse 70% 70% at 105% 105%, rgba(15,42,28,0.05) 0%, transparent 55%),
+              radial-gradient(ellipse 55% 55% at -5% 105%, rgba(180,148,80,0.05) 0%, transparent 55%)
+            `
           }} />
           <div className="relative p-4 lg:p-6">
             <Outlet />
