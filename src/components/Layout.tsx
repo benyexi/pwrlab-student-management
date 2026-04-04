@@ -77,8 +77,8 @@ export default function Layout() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm ${
       isActive
-        ? 'bg-white/20 text-white font-semibold'
-        : 'text-green-100 hover:bg-white/10 hover:text-white'
+        ? 'bg-white/15 text-white font-semibold rounded-lg border-l-2 border-green-400'
+        : 'text-green-200/80 hover:bg-white/10 hover:text-white rounded-lg'
     }`
 
   return (
@@ -95,13 +95,15 @@ export default function Layout() {
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        style={{ backgroundColor: '#1a3a2a' }}
+        } bg-[#132d22]`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-            <TreePine className="w-8 h-8 text-green-300" />
+            <TreePine
+              className="w-8 h-8 text-green-300"
+              style={{ filter: 'drop-shadow(0 0 10px rgba(74, 222, 128, 0.45))' }}
+            />
             <div>
               <h1 className="text-white font-bold text-lg leading-tight">PWRLab</h1>
               <p className="text-green-300 text-xs">学生管理系统</p>
@@ -118,7 +120,7 @@ export default function Layout() {
           <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
             {navGroups.map((group) => (
               <div key={group.label}>
-                <p className="px-4 text-xs text-green-400/60 uppercase tracking-wider font-medium mb-1">
+                <p className="px-4 mb-1 uppercase font-medium text-green-400/50 text-[10px] tracking-[0.15em]">
                   {group.label}
                 </p>
                 <div className="space-y-0.5">
@@ -140,16 +142,18 @@ export default function Layout() {
 
           {/* User info & sign out */}
           <div className="px-4 py-4 border-t border-white/10">
-            <div className="text-green-200 text-sm mb-2 truncate">
-              {user?.name} ({user?.role === 'admin' ? '导师' : '学生'})
+            <div className="bg-black/20 rounded-xl px-3 py-3 mx-1">
+              <div className="text-green-200 text-sm mb-2 truncate">
+                {user?.name} ({user?.role === 'admin' ? '导师' : '学生'})
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 text-green-300 hover:text-white transition-colors text-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                退出登录
+              </button>
             </div>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 text-green-300 hover:text-white transition-colors text-sm"
-            >
-              <LogOut className="w-4 h-4" />
-              退出登录
-            </button>
           </div>
         </div>
       </aside>
@@ -157,7 +161,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between lg:px-6">
+        <header className="bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between lg:px-6">
           <div className="flex items-center">
             <button
               className="lg:hidden mr-3 p-2 rounded-md hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -165,7 +169,7 @@ export default function Layout() {
             >
               <Menu className="w-6 h-6 text-gray-600" />
             </button>
-            <h2 className="text-lg font-semibold text-gray-800">
+            <h2 className="text-base font-semibold text-gray-700 tracking-wide">
               人工林水分关系实验室
             </h2>
           </div>

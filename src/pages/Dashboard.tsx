@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { ElementType } from 'react'
+import { Users, BookOpen, GraduationCap, FlaskConical, Microscope, Beaker } from 'lucide-react'
 import { getStudents, supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveOwnedStudents } from '../lib/studentOwnership'
@@ -21,12 +23,35 @@ function computeStats(students: Student[]): DashboardStats {
   }
 }
 
-function StatCard({ label, value, sub, color }: { label: string; value: number; sub?: string; color: string }) {
+function StatCard({
+  label,
+  value,
+  sub,
+  color,
+  borderColor,
+  bgColor,
+  icon: Icon,
+}: {
+  label: string
+  value: number
+  sub?: string
+  color: string
+  borderColor: string
+  bgColor: string
+  icon: ElementType
+}) {
   return (
-    <div className="card p-5">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className={`relative bg-white rounded-2xl shadow-sm border border-gray-100 border-l-4 ${borderColor} p-5 overflow-hidden`}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+          <p className={`text-4xl font-bold mt-2 ${color}`}>{value}</p>
+          {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
+        </div>
+        <div className={`p-2.5 rounded-xl ${bgColor}`}>
+          <Icon className={`w-5 h-5 ${color}`} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -183,18 +208,18 @@ export default function Dashboard() {
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Page title */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">概览</h1>
-        <p className="text-sm text-gray-500 mt-0.5">PWR Lab 学生整体情况</p>
+        <h1 className="text-2xl font-bold text-gray-900">概览</h1>
+        <p className="text-sm font-medium text-gray-500 mt-0.5">PWR Lab 学生整体情况</p>
       </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <StatCard label="学生总数" value={stats.total} color="text-primary-700" />
-        <StatCard label="在读" value={stats.active} sub="当前在籍" color="text-green-600" />
-        <StatCard label="已毕业" value={stats.graduated} color="text-gray-500" />
-        <StatCard label="硕士" value={stats.masters} color="text-blue-600" />
-        <StatCard label="博士" value={stats.phd} color="text-purple-600" />
-        <StatCard label="博士后" value={stats.postdoc} color="text-yellow-600" />
+        <StatCard label="学生总数" value={stats.total} icon={Users} color="text-primary-700" borderColor="border-primary-500" bgColor="bg-primary-50" />
+        <StatCard label="在读" value={stats.active} sub="当前在籍" icon={BookOpen} color="text-green-600" borderColor="border-green-400" bgColor="bg-green-50" />
+        <StatCard label="已毕业" value={stats.graduated} icon={GraduationCap} color="text-gray-500" borderColor="border-gray-300" bgColor="bg-gray-50" />
+        <StatCard label="硕士" value={stats.masters} icon={FlaskConical} color="text-blue-600" borderColor="border-blue-400" bgColor="bg-blue-50" />
+        <StatCard label="博士" value={stats.phd} icon={Microscope} color="text-purple-600" borderColor="border-purple-400" bgColor="bg-purple-50" />
+        <StatCard label="博士后" value={stats.postdoc} icon={Beaker} color="text-amber-600" borderColor="border-amber-400" bgColor="bg-amber-50" />
       </div>
 
       {/* Enrollment by year */}
@@ -206,14 +231,17 @@ export default function Dashboard() {
               .sort(([a], [b]) => Number(b) - Number(a))
               .map(([year, count]) => (
                 <div key={year} className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600 w-12 flex-shrink-0">{year}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-2">
+                  <span className="text-sm font-medium text-gray-600 w-12 flex-shrink-0">{year}</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-3">
                     <div
-                      className="bg-primary-600 h-2 rounded-full transition-all"
-                      style={{ width: `${(count / stats.total) * 100}%` }}
+                      className="h-3 rounded-full transition-all"
+                      style={{
+                        width: `${(count / stats.total) * 100}%`,
+                        background: 'linear-gradient(90deg, #1a3a2a, #4da37c)',
+                      }}
                     />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 w-6 text-right">{count}</span>
+                  <span className="text-sm font-bold text-gray-700 w-6 text-right">{count}</span>
                 </div>
               ))}
           </div>
@@ -223,7 +251,7 @@ export default function Dashboard() {
       {/* Recent students */}
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">最近添加的学生</h2>
+          <h2 className="text-sm font-bold text-gray-800 tracking-wide">最近添加的学生</h2>
           <Link to="/students" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
             查看全部 →
           </Link>
@@ -240,9 +268,9 @@ export default function Dashboard() {
               <Link
                 key={s.id}
                 to={`/students/${s.id}`}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-4 px-5 py-3.5 hover:bg-primary-50/50 transition-colors"
               >
-                <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 text-primary-700 font-semibold text-sm">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm shadow-sm">
                   {s.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
