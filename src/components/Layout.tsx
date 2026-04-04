@@ -82,7 +82,7 @@ export default function Layout() {
     }`
 
   return (
-    <div className="flex h-screen" style={{ backgroundColor: '#f5f3ef' }}>
+    <div className="flex h-screen" style={{ backgroundColor: '#eef1ec' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -188,57 +188,23 @@ export default function Layout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="backdrop-blur-sm border-b px-4 py-3 flex items-center justify-between lg:px-6" style={{ backgroundColor: 'rgba(13,31,20,0.97)', borderBottomColor: 'rgba(74,222,128,0.12)' }}>
+        <header className="bg-white border-b px-4 py-3 flex items-center justify-between lg:px-6" style={{ borderBottomColor: '#e5e7e3', borderBottomWidth: '1px', boxShadow: '0 1px 0 rgba(26,58,42,0.06)' }}>
           <div className="flex items-center">
             <button
-              className="lg:hidden mr-3 p-2 rounded-md min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10"
+              className="lg:hidden mr-3 p-2 rounded-md hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu className="w-6 h-6 text-green-300/70" />
+              <Menu className="w-6 h-6 text-gray-600" />
             </button>
-            <h2 className="text-base font-semibold tracking-wide" style={{ color: 'rgba(187,232,200,0.85)' }}>
+            <h2 className="text-base font-semibold text-gray-700 tracking-wide">
               人工林水分关系实验室
             </h2>
           </div>
           <NotificationPanel />
         </header>
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto relative" style={{
-          background: 'linear-gradient(170deg, #0d1f14 0%, #111f16 45%, #0c1b10 100%)'
-        }}>
-          {/* Topographic contour lines — green on dark */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            xmlns="http://www.w3.org/2000/svg"
-            preserveAspectRatio="xMidYMid slice"
-            style={{ opacity: 0.13 }}
-          >
-            <defs>
-              <pattern id="topo" x="0" y="0" width="520" height="360" patternUnits="userSpaceOnUse">
-                <path d="M-40,180 C60,120 160,200 260,150 C360,100 420,170 560,140" stroke="#4ade80" strokeWidth="1.1" fill="none"/>
-                <path d="M-40,210 C50,155 150,235 260,185 C370,135 430,205 560,175" stroke="#4ade80" strokeWidth="0.8" fill="none"/>
-                <path d="M-40,238 C60,190 160,268 260,218 C360,168 430,238 560,206" stroke="#4ade80" strokeWidth="0.6" fill="none"/>
-                <path d="M-40,80 C80,38 180,108 300,63 C400,23 460,78 560,52" stroke="#4ade80" strokeWidth="1.0" fill="none"/>
-                <path d="M-40,106 C80,66 180,136 300,92 C400,52 460,106 560,80" stroke="#4ade80" strokeWidth="0.7" fill="none"/>
-                <path d="M-40,290 C70,250 170,318 280,276 C390,233 450,293 560,266" stroke="#4ade80" strokeWidth="0.8" fill="none"/>
-                <path d="M-40,316 C70,278 170,346 280,306 C390,263 450,323 560,296" stroke="#4ade80" strokeWidth="0.5" fill="none"/>
-                <line x1="130" y1="116" x2="130" y2="127" stroke="#4ade80" strokeWidth="0.8"/>
-                <line x1="310" y1="86" x2="310" y2="97" stroke="#4ade80" strokeWidth="0.8"/>
-                <line x1="240" y1="156" x2="240" y2="167" stroke="#4ade80" strokeWidth="0.8"/>
-                <line x1="420" y1="196" x2="420" y2="207" stroke="#4ade80" strokeWidth="0.8"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#topo)"/>
-          </svg>
-          {/* Depth glows */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: `
-              radial-gradient(ellipse 100% 55% at 50% -5%, rgba(45,106,79,0.30) 0%, transparent 62%),
-              radial-gradient(ellipse 50% 60% at 100% 100%, rgba(10,30,18,0.6) 0%, transparent 50%),
-              radial-gradient(ellipse 45% 50% at 0% 100%, rgba(10,28,16,0.5) 0%, transparent 50%)
-            `
-          }} />
-          <div className="relative p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: '#eef1ec' }}>
+          <div className="p-4 lg:p-6">
             <Outlet />
           </div>
         </main>

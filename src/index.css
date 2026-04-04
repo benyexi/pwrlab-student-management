@@ -16,7 +16,7 @@
   body {
     font-family: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif;
     @apply text-gray-900 antialiased;
-    background-color: #f5f3ef;
+    background-color: #eef1ec;
     min-height: 100vh;
     font-feature-settings: 'kern' 1, 'liga' 1;
     -webkit-font-smoothing: antialiased;
