@@ -21,7 +21,8 @@ const config: Config = {
         accent: '#4da37c',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"DM Sans"', '"Noto Sans SC"', 'system-ui', 'sans-serif'],
+        serif: ['"Playfair Display"', '"Noto Serif SC"', 'Georgia', 'serif'],
       },
     },
   },

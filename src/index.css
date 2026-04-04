@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -10,24 +10,38 @@
   }
 
   html {
-    font-family: 'Inter', system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
   }
 
   body {
+    font-family: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif;
     @apply text-gray-900 antialiased;
     background-color: #f5f3ef;
     min-height: 100vh;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+    -webkit-font-smoothing: antialiased;
   }
 
   #root {
     min-height: 100vh;
   }
+
+  /* Page-level headings use editorial serif */
+  h1 {
+    font-family: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+    letter-spacing: -0.02em;
+  }
 }
 
 @layer components {
+  /* Utility for serif headings anywhere */
+  .font-display {
+    font-family: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+  }
+
+  /* Keep serif-cn as alias */
   .serif-cn {
-    font-family: 'Noto Serif SC', 'SimSun', 'STSong', 'Georgia', serif;
+    font-family: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
   }
 
   .btn-primary {
