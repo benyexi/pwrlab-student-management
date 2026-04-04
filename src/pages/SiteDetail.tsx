@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Mountain, TreePine, Calendar, Cloud, Plus, RefreshCw } from 'lucide-react'
+import { ArrowLeft, MapPin, Mountain, TreePine, Calendar, Cloud, Plus, RefreshCw, Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { fetchCurrentWeather } from '../lib/weather'
+import { useAuth } from '../contexts/AuthContext'
 import type { WeatherRecord, WeatherSource } from '../types'
 
 type SiteRow = {
@@ -54,9 +55,179 @@ const getSpeciesLabel = (site: SiteRow) => {
   return cn || en || '未知'
 }
 
+// ─── 30-day pruning helper ────────────────────────────────────────────────────
+async function pruneOldRecords(siteId: string) {
+  const { data: allRecords, error } = await supabase
+    .from('weather_records')
+    .select('id, date')
+    .eq('site_id', siteId)
+    .order('date', { ascending: true })
+  if (error || !allRecords) return
+  if (allRecords.length > 30) {
+    const toDelete = allRecords.slice(0, allRecords.length - 30)
+    const ids = toDelete.map((r: { id: string }) => r.id)
+    await supabase.from('weather_records').delete().in('id', ids)
+  }
+}
+
+// ─── Mini SVG chart helpers ───────────────────────────────────────────────────
+const W = 400
+const H = 90
+const PAD = { left: 4, right: 4, top: 12, bottom: 22 }
+const innerW = W - PAD.left - PAD.right
+const innerH = H - PAD.top - PAD.bottom
+
+function xPos(i: number, total: number) {
+  if (total <= 1) return PAD.left + innerW / 2
+  return PAD.left + (i / (total - 1)) * innerW
+}
+
+function yPos(val: number, minVal: number, maxVal: number) {
+  const range = maxVal - minVal || 1
+  return PAD.top + innerH - ((val - minVal) / range) * innerH
+}
+
+type MiniChartProps = {
+  data: WeatherRecord[]
+  field: 'temperature' | 'rainfall' | 'humidity' | 'wind_speed'
+  color: string
+  gradientId: string
+  type: 'line' | 'bar'
+  label: string
+}
+
+function MiniChart({ data, field, color, gradientId, type, label }: MiniChartProps) {
+  const values = data.map((d) => (d[field] as number | null | undefined) ?? 0)
+  const minVal = type === 'line' ? Math.min(...values) : 0
+  const maxVal = Math.max(...values, type === 'bar' ? 1 : minVal + 1)
+  const latest = data.length > 0 ? values[values.length - 1] : null
+
+  const unitMap: Record<string, string> = {
+    temperature: '°C',
+    rainfall: 'mm',
+    humidity: '%',
+    wind_speed: 'm/s',
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border p-3">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-gray-400">{label}</span>
+        {latest !== null ? (
+          <span className="text-sm font-bold" style={{ color }}>
+            {latest}{unitMap[field]}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-300">—</span>
+        )}
+      </div>
+      {data.length === 0 ? (
+        <div className="flex items-center justify-center text-gray-300 text-xs" style={{ height: H }}>
+          暂无数据
+        </div>
+      ) : (
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+
+          {type === 'line' && (() => {
+            const pts = data.map((d, i) => {
+              const v = (d[field] as number | null | undefined) ?? 0
+              return `${xPos(i, data.length)},${yPos(v, minVal, maxVal)}`
+            })
+            const areaPath =
+              `M ${pts[0]} ` +
+              pts.slice(1).map((p) => `L ${p}`).join(' ') +
+              ` L ${xPos(data.length - 1, data.length)},${PAD.top + innerH}` +
+              ` L ${xPos(0, data.length)},${PAD.top + innerH} Z`
+            return (
+              <>
+                <path d={areaPath} fill={`url(#${gradientId})`} />
+                <polyline
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="1.8"
+                  points={pts.join(' ')}
+                />
+                {data.map((d, i) => {
+                  const v = (d[field] as number | null | undefined) ?? 0
+                  return (
+                    <circle
+                      key={i}
+                      cx={xPos(i, data.length)}
+                      cy={yPos(v, minVal, maxVal)}
+                      r="2"
+                      fill={color}
+                    />
+                  )
+                })}
+              </>
+            )
+          })()}
+
+          {type === 'bar' && (() => {
+            const barW = Math.max(2, (innerW / data.length) * 0.6)
+            return (
+              <>
+                {data.map((d, i) => {
+                  const v = (d[field] as number | null | undefined) ?? 0
+                  const bh = ((v - 0) / (maxVal - 0)) * innerH
+                  const bx = xPos(i, data.length) - barW / 2
+                  const by = PAD.top + innerH - bh
+                  return (
+                    <g key={i}>
+                      <defs>
+                        <linearGradient id={`${gradientId}_bar_${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={color} stopOpacity="0.85" />
+                          <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+                        </linearGradient>
+                      </defs>
+                      <rect
+                        x={bx}
+                        y={by}
+                        width={barW}
+                        height={Math.max(bh, 0)}
+                        fill={`url(#${gradientId}_bar_${i})`}
+                        rx="1"
+                      />
+                    </g>
+                  )
+                })}
+              </>
+            )
+          })()}
+
+          {/* X-axis date labels — one every 5 items */}
+          {data.map((d, i) => {
+            if (i % 5 !== 0 && i !== data.length - 1) return null
+            return (
+              <text
+                key={`xl${i}`}
+                x={xPos(i, data.length)}
+                y={H - 4}
+                textAnchor="middle"
+                fontSize="8"
+                fill="#9ca3af"
+              >
+                {d.date.slice(5)}
+              </text>
+            )
+          })}
+        </svg>
+      )}
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function SiteDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [site, setSite] = useState<SiteRow | null>(null)
   const [weather, setWeather] = useState<WeatherRecord[]>([])
@@ -111,7 +282,22 @@ export default function SiteDetail() {
           setError(weatherError.message)
           setWeather([])
         } else {
-          setWeather((weatherData ?? []).map((row) => normalizeWeatherRecord(row as WeatherRow)))
+          const records = (weatherData ?? []).map((row) => normalizeWeatherRecord(row as WeatherRow))
+          setWeather(records)
+
+          // Auto-fetch today's weather for admin if no record today
+          if (user?.role === 'admin') {
+            const today = new Date().toISOString().slice(0, 10)
+            const hasToday = records.some((r) => r.date === today)
+            if (!hasToday) {
+              // Defer so state is settled
+              setTimeout(() => {
+                if (active) {
+                  handleFetchWeatherForSite(siteData as SiteRow)
+                }
+              }, 0)
+            }
+          }
         }
       }
 
@@ -123,23 +309,22 @@ export default function SiteDetail() {
     return () => {
       active = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const chartData = useMemo(() => {
-    const sorted = [...weather].sort((a, b) => a.date.localeCompare(b.date)).slice(-10)
-    return sorted
+    return [...weather].sort((a, b) => a.date.localeCompare(b.date)).slice(-30)
   }, [weather])
 
-  const handleFetchWeather = async () => {
-    if (!site) return
-
+  // Shared fetch logic (also called from useEffect on mount)
+  async function handleFetchWeatherForSite(targetSite: SiteRow) {
     setSaving(true)
     setError(null)
     try {
-      const data = await fetchCurrentWeather(site.latitude, site.longitude)
+      const data = await fetchCurrentWeather(targetSite.latitude, targetSite.longitude)
       const { data: authData } = await supabase.auth.getUser()
       const payload = {
-        site_id: site.id,
+        site_id: targetSite.id,
         date: new Date().toISOString().slice(0, 10),
         temperature: data.temperature,
         temperature_min: data.temperature_min,
@@ -159,8 +344,23 @@ export default function SiteDetail() {
         .single()
 
       if (insertError) throw insertError
+
       if (inserted) {
         setWeather((prev) => [normalizeWeatherRecord(inserted as WeatherRow), ...prev])
+      }
+
+      // Prune to 30 records
+      await pruneOldRecords(targetSite.id)
+
+      // Refresh full list after prune
+      const { data: freshData } = await supabase
+        .from('weather_records')
+        .select('*')
+        .eq('site_id', targetSite.id)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+      if (freshData) {
+        setWeather(freshData.map((row) => normalizeWeatherRecord(row as WeatherRow)))
       }
     } catch (fetchError) {
       const message = fetchError instanceof Error ? fetchError.message : '获取天气数据失败'
@@ -169,6 +369,11 @@ export default function SiteDetail() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleFetchWeather = async () => {
+    if (!site) return
+    await handleFetchWeatherForSite(site)
   }
 
   const handleManualSubmit = async (e: FormEvent) => {
@@ -204,6 +409,20 @@ export default function SiteDetail() {
         setWeather((prev) => [normalizeWeatherRecord(inserted as WeatherRow), ...prev])
       }
 
+      // Prune to 30 records
+      await pruneOldRecords(site.id)
+
+      // Refresh full list after prune
+      const { data: freshData } = await supabase
+        .from('weather_records')
+        .select('*')
+        .eq('site_id', site.id)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+      if (freshData) {
+        setWeather(freshData.map((row) => normalizeWeatherRecord(row as WeatherRow)))
+      }
+
       setShowForm(false)
       setForm(EMPTY_FORM)
     } catch (submitError) {
@@ -213,6 +432,34 @@ export default function SiteDetail() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleExportCSV = () => {
+    if (!site || weather.length === 0) return
+    const header = '日期,温度(°C),最低温,最高温,降雨(mm),湿度(%),风速(m/s),天气,来源'
+    const rows = [...weather]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((w) =>
+        [
+          w.date,
+          w.temperature ?? '',
+          w.temperature_min ?? '',
+          w.temperature_max ?? '',
+          w.rainfall ?? '',
+          w.humidity ?? '',
+          w.wind_speed ?? '',
+          w.weather_desc ?? '',
+          w.source ?? '',
+        ].join(',')
+      )
+    const csv = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${site.name_cn}_天气数据.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   if (loading) {
@@ -236,9 +483,6 @@ export default function SiteDetail() {
       </div>
     )
   }
-
-  const maxTemp = Math.max(...chartData.map((d) => d.temperature ?? 0), 1)
-  const maxRain = Math.max(...chartData.map((d) => d.rainfall ?? 0), 1)
 
   return (
     <div className="space-y-6">
@@ -277,71 +521,55 @@ export default function SiteDetail() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border p-5">
-        <h2 className="font-semibold text-gray-900 mb-4">近10天天气趋势</h2>
-        {chartData.length > 0 ? (
-          <div className="overflow-x-auto">
-            <svg viewBox="0 0 600 200" className="w-full min-w-[500px]" style={{ maxHeight: 220 }}>
-              <polyline
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="2"
-                points={chartData.map((d, i) => `${40 + i * (520 / Math.max(chartData.length - 1, 1))},${170 - ((d.temperature ?? 0) / maxTemp) * 140}`).join(' ')}
-              />
-              {chartData.map((d, i) => (
-                <g key={`t${i}`}>
-                  <circle
-                    cx={40 + i * (520 / Math.max(chartData.length - 1, 1))}
-                    cy={170 - ((d.temperature ?? 0) / maxTemp) * 140}
-                    r="3" fill="#ef4444"
-                  />
-                  <text
-                    x={40 + i * (520 / Math.max(chartData.length - 1, 1))}
-                    y={170 - ((d.temperature ?? 0) / maxTemp) * 140 - 8}
-                    textAnchor="middle" fontSize="9" fill="#ef4444"
-                  >{d.temperature}°</text>
-                </g>
-              ))}
-              {chartData.map((d, i) => (
-                <g key={`r${i}`}>
-                  <rect
-                    x={40 + i * (520 / Math.max(chartData.length - 1, 1)) - 8}
-                    y={170 - ((d.rainfall ?? 0) / maxRain) * 60}
-                    width="16"
-                    height={((d.rainfall ?? 0) / maxRain) * 60}
-                    fill="#3b82f6" opacity="0.4" rx="2"
-                  />
-                  {(d.rainfall ?? 0) > 0 && (
-                    <text
-                      x={40 + i * (520 / Math.max(chartData.length - 1, 1))}
-                      y={170 - ((d.rainfall ?? 0) / maxRain) * 60 - 4}
-                      textAnchor="middle" fontSize="8" fill="#3b82f6"
-                    >{d.rainfall}mm</text>
-                  )}
-                </g>
-              ))}
-              {chartData.map((d, i) => (
-                <text
-                  key={`x${i}`}
-                  x={40 + i * (520 / Math.max(chartData.length - 1, 1))}
-                  y="192" textAnchor="middle" fontSize="8" fill="#9ca3af"
-                >{d.date.slice(5)}</text>
-              ))}
-              <circle cx="450" cy="10" r="4" fill="#ef4444" />
-              <text x="458" y="14" fontSize="9" fill="#666">温度(°C)</text>
-              <rect x="510" y="6" width="10" height="8" fill="#3b82f6" opacity="0.4" rx="1" />
-              <text x="524" y="14" fontSize="9" fill="#666">降雨(mm)</text>
-            </svg>
-          </div>
-        ) : (
-          <p className="text-gray-400 text-center py-8">暂无天气数据</p>
-        )}
+      {/* 4-panel chart grid */}
+      <div className="grid grid-cols-2 gap-4">
+        <MiniChart
+          data={chartData}
+          field="temperature"
+          color="#ef4444"
+          gradientId="grad_temp"
+          type="line"
+          label="温度(°C)"
+        />
+        <MiniChart
+          data={chartData}
+          field="rainfall"
+          color="#3b82f6"
+          gradientId="grad_rain"
+          type="bar"
+          label="降雨(mm)"
+        />
+        <MiniChart
+          data={chartData}
+          field="humidity"
+          color="#06b6d4"
+          gradientId="grad_humi"
+          type="line"
+          label="湿度(%)"
+        />
+        <MiniChart
+          data={chartData}
+          field="wind_speed"
+          color="#8b5cf6"
+          gradientId="grad_wind"
+          type="line"
+          label="风速(m/s)"
+        />
       </div>
 
+      {/* Weather records table */}
       <div className="bg-white rounded-xl shadow-sm border">
         <div className="flex items-center justify-between p-5 border-b">
           <h2 className="font-semibold text-gray-900">天气记录</h2>
           <div className="flex gap-2">
+            <button
+              onClick={handleExportCSV}
+              disabled={weather.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-sm hover:bg-gray-100 disabled:opacity-40"
+            >
+              <Download className="w-3.5 h-3.5" />
+              导出CSV
+            </button>
             <button
               onClick={handleFetchWeather}
               disabled={saving}
