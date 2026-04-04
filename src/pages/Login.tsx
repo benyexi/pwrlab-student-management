@@ -31,7 +31,7 @@ export default function Login() {
       {/* ── Left: Ink Mountain Panel ── */}
       <div
         className="hidden lg:flex flex-col justify-between w-[55%] relative overflow-hidden"
-        style={{ background: '#060e08' }}
+        style={{ background: 'linear-gradient(160deg, #1a3a2a 0%, #0f2a1c 60%, #0a1f14 100%)' }}
       >
         {/* Mountain layers — back to front */}
         <svg
@@ -40,20 +40,20 @@ export default function Login() {
           preserveAspectRatio="xMidYMax slice"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Layer 1 — distant, lightest */}
+          {/* Layer 1 — distant, green ridge */}
           <path
             d="M0,520 C80,480 150,440 230,420 C310,400 360,460 440,430 C520,400 570,370 640,380 C710,390 760,420 800,400 L800,700 L0,700 Z"
-            fill="#0d2318" opacity="0.9"
+            fill="#2d6a4f" opacity="0.5"
           />
           {/* Layer 2 */}
           <path
             d="M0,560 C60,510 130,470 200,480 C270,490 310,530 390,500 C470,470 520,440 600,450 C680,460 740,490 800,470 L800,700 L0,700 Z"
-            fill="#0a1c12" opacity="0.95"
+            fill="#1e4d35" opacity="0.8"
           />
-          {/* Layer 3 — mid, with tree silhouettes */}
+          {/* Layer 3 — mid ridge */}
           <path
             d="M0,590 C50,550 110,520 170,530 C220,538 250,560 310,545 C370,530 410,505 480,515 C550,525 600,548 660,535 C720,522 765,505 800,510 L800,700 L0,700 Z"
-            fill="#071509"
+            fill="#163a27"
           />
           {/* Tree tops on layer 3 */}
           {[30,70,110,150,190,240,290,340,390,445,500,555,610,660,715,760].map((x, i) => {
@@ -61,15 +61,15 @@ export default function Login() {
             const base = 530 + (i % 3) * 4
             return (
               <g key={x}>
-                <polygon points={`${x},${base - h} ${x - 7},${base} ${x + 7},${base}`} fill="#050f07" />
-                <polygon points={`${x},${base - h - 10} ${x - 5},${base - h + 5} ${x + 5},${base - h + 5}`} fill="#050f07" />
+                <polygon points={`${x},${base - h} ${x - 7},${base} ${x + 7},${base}`} fill="#112d1e" />
+                <polygon points={`${x},${base - h - 10} ${x - 5},${base - h + 5} ${x + 5},${base - h + 5}`} fill="#112d1e" />
               </g>
             )
           })}
-          {/* Layer 4 — foreground, darkest */}
+          {/* Layer 4 — foreground */}
           <path
             d="M0,630 C40,600 90,575 150,582 C200,588 230,610 280,600 C330,590 370,572 430,578 C490,584 530,605 590,595 C650,585 710,568 800,575 L800,700 L0,700 Z"
-            fill="#040c05"
+            fill="#0d2418"
           />
           {/* Foreground tree silhouettes */}
           {[20,55,95,135,175,215,265,320,375,430,490,545,605,660,720,775].map((x, i) => {
@@ -77,46 +77,45 @@ export default function Login() {
             const base = 580 + (i % 3) * 6
             return (
               <g key={x}>
-                <polygon points={`${x},${base - h} ${x - 9},${base} ${x + 9},${base}`} fill="#030a04" />
-                <polygon points={`${x},${base - h - 12} ${x - 6},${base - h + 6} ${x + 6},${base - h + 6}`} fill="#030a04" />
+                <polygon points={`${x},${base - h} ${x - 9},${base} ${x + 9},${base}`} fill="#09190f" />
+                <polygon points={`${x},${base - h - 12} ${x - 6},${base - h + 6} ${x + 6},${base - h + 6}`} fill="#09190f" />
               </g>
             )
           })}
-          {/* Atmospheric mist — gradient overlay */}
+          {/* Atmospheric mist overlay */}
           <defs>
             <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#060e08" stopOpacity="1"/>
-              <stop offset="35%" stopColor="#060e08" stopOpacity="0"/>
-              <stop offset="75%" stopColor="#060e08" stopOpacity="0"/>
-              <stop offset="100%" stopColor="#060e08" stopOpacity="0.6"/>
+              <stop offset="0%" stopColor="#1a3a2a" stopOpacity="0.5"/>
+              <stop offset="40%" stopColor="#1a3a2a" stopOpacity="0"/>
+              <stop offset="100%" stopColor="#0a1f14" stopOpacity="0.4"/>
             </linearGradient>
           </defs>
           <rect width="800" height="700" fill="url(#mist)" />
         </svg>
 
-        {/* Subtle green ambient glow at horizon */}
+        {/* Green ambient glow at horizon */}
         <div
           className="absolute pointer-events-none"
           style={{
-            left: '10%', right: '10%',
-            top: '52%',
-            height: '120px',
-            background: 'radial-gradient(ellipse, rgba(34,197,94,0.07) 0%, transparent 70%)',
-            filter: 'blur(20px)',
+            left: '5%', right: '5%',
+            top: '48%',
+            height: '160px',
+            background: 'radial-gradient(ellipse, rgba(74,222,128,0.12) 0%, transparent 70%)',
+            filter: 'blur(24px)',
           }}
         />
 
         {/* Logo top-left */}
         <div className="relative z-10 flex items-center gap-3 px-12 pt-10">
-          <svg className="w-7 h-7 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="w-7 h-7 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 22V12M12 12C12 12 7 10 7 5a5 5 0 0 1 10 0c0 5-5 7-5 7z"/>
           </svg>
-          <span className="text-white/50 text-sm tracking-[0.12em] font-light">PWR Lab</span>
+          <span className="text-white/80 text-sm tracking-[0.12em] font-medium">PWR Lab</span>
         </div>
 
         {/* Center hero text */}
         <div className="relative z-10 px-12 pb-2">
-          <p className="text-green-500/60 text-[10px] tracking-[0.3em] uppercase mb-4 font-medium">
+          <p className="text-green-300 text-xs tracking-[0.25em] uppercase mb-4 font-semibold">
             Plant Water Relations Lab
           </p>
           <h1
@@ -127,14 +126,14 @@ export default function Login() {
             <span style={{ color: '#4ade80' }}>人工林水分关系</span><br />
             实验室
           </h1>
-          <p className="text-white/30 text-sm leading-relaxed max-w-xs">
+          <p className="text-white/70 text-sm leading-relaxed max-w-xs">
             科研数据管理平台，统一追踪学生进展、野外站点与科研成果。
           </p>
         </div>
 
         {/* Bottom tagline */}
         <div className="relative z-10 flex items-center justify-between px-12 pb-10">
-          <p className="text-white/15 text-xs tracking-wide">© 2025 北京林业大学</p>
+          <p className="text-white/40 text-xs tracking-wide">© 2025 北京林业大学</p>
           <div className="flex gap-1.5">
             {[1,2,3].map(i => (
               <div key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: i === 1 ? 'rgba(74,222,128,0.5)' : 'rgba(255,255,255,0.12)' }} />
