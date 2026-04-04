@@ -1,4 +1,9 @@
+import * as React from 'react'
 import { useEffect, useState, useMemo } from 'react'
+import {
+  DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
+  useDroppable, useDraggable, type DragEndEvent, type DragStartEvent,
+} from '@dnd-kit/core'
 import {
   FolderKanban, Search, Plus, X, AlertTriangle, ChevronLeft,
   ChevronRight, Clock, User, Filter, GripVertical,
@@ -39,6 +44,79 @@ function mergeUniqueById<T extends { id: string }>(...rowsList: T[][]): T[] {
   return Array.from(map.values())
 }
 
+function DroppableColumn({ stage, children }: { stage: string, children: React.ReactNode }) {
+  const { isOver, setNodeRef } = useDroppable({ id: stage })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-b-lg p-2 space-y-2 min-h-[120px] bg-gray-50 transition-colors ${
+        isOver ? 'ring-2 ring-inset ring-green-300 bg-green-50' : ''
+      }`}
+    >
+      {children}
+    </div>
+  )
+}
+
+function DraggableCard({
+  project,
+  isAdmin,
+  savingId,
+  onOpen,
+}: {
+  project: Project
+  isAdmin: boolean
+  savingId: string | null
+  onOpen: (p: Project) => void
+}) {
+  const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
+    id: project.id,
+    disabled: !isAdmin,
+  })
+  const days = daysSince(project.stage_entered_at)
+  const daysClass = stayColor(days)
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      onClick={() => onOpen(project)}
+      className={`bg-white rounded-lg border shadow-sm p-3 cursor-pointer hover:shadow-md transition-all ${
+        isDragging ? 'opacity-30' : ''
+      } ${savingId === project.id ? 'opacity-60' : ''}`}
+    >
+      <div className="flex items-start justify-between gap-1 mb-1.5">
+        <h4 className="text-sm font-medium text-gray-900 leading-tight line-clamp-2">{project.title}</h4>
+        {isAdmin && (
+          <button
+            type="button"
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            className="text-gray-300 flex-shrink-0 mt-0.5 cursor-grab active:cursor-grabbing touch-none"
+            aria-label={`拖动 ${project.title}`}
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-1 text-xs text-gray-500 mb-1.5">
+        <User className="w-3 h-3" /> {project.student_name}
+      </div>
+      <div className="flex items-center justify-between">
+        <span className={`text-xs px-1.5 py-0.5 rounded ${daysClass}`}>
+          <Clock className="w-3 h-3 inline mr-0.5" />{days}天
+        </span>
+        {project.updated_at && (
+          <span className="text-[10px] text-gray-400">
+            {project.updated_at.slice(0, 10)}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Projects() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -58,6 +136,7 @@ export default function Projects() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [activeProject, setActiveProject] = useState<Project | null>(null)
   const [stageNote, setStageNote] = useState('')
   const [advisorNote, setAdvisorNote] = useState('')
 
@@ -201,6 +280,15 @@ export default function Projects() {
     return { over90, nearGraduation }
   }, [projects, students])
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    })
+  )
+
   // Advance/retreat stage
   const changeStage = async (project: Project, newStage: ProjectStage) => {
     const now = new Date().toISOString()
@@ -228,6 +316,27 @@ export default function Projects() {
         setSelectedProject({ ...project, stage: newStage, stage_entered_at: now, stage_history: history })
       }
     } finally { setSavingId(null); setStageNote('') }
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const project = projects.find((item) => item.id === String(event.active.id)) || null
+    setActiveProject(project)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveProject(null)
+
+    if (!over) return
+
+    const project = projects.find((item) => item.id === String(active.id))
+    const nextStage = String(over.id)
+
+    if (!project) return
+    if (!STAGES.includes(nextStage as ProjectStage)) return
+    if (project.stage === nextStage) return
+
+    await changeStage(project, nextStage as ProjectStage)
   }
 
   const saveAdvisorNote = async () => {
@@ -365,57 +474,55 @@ export default function Projects() {
       )}
 
       {/* Kanban Board */}
-      {projects.length > 0 && <div className="overflow-x-auto pb-4 -mx-4 px-4 -webkit-overflow-scrolling-touch">
-        <div className="flex gap-3" style={{ minWidth: `${STAGES.length * 200}px` }}>
-          {STAGES.map(stage => {
-            const cards = grouped[stage] || []
-            return (
-              <div key={stage} className="flex-1 min-w-[200px]">
-                {/* Column header */}
-                <div className="rounded-t-lg px-3 py-2 text-white text-sm font-medium flex items-center justify-between"
-                  style={{ backgroundColor: STAGE_COLORS[stage] }}>
-                  <span>{stage}</span>
-                  <span className="bg-white/30 rounded-full px-2 py-0.5 text-xs">{cards.length}</span>
-                </div>
+      {projects.length > 0 && (
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div className="overflow-x-auto pb-4 -mx-4 px-4 -webkit-overflow-scrolling-touch">
+            <div className="flex gap-3" style={{ minWidth: `${STAGES.length * 200}px` }}>
+              {STAGES.map(stage => {
+                const cards = grouped[stage] || []
+                return (
+                  <div key={stage} className="flex-1 min-w-[200px]">
+                    <div className="rounded-t-lg px-3 py-2 text-white text-sm font-medium flex items-center justify-between"
+                      style={{ backgroundColor: STAGE_COLORS[stage] }}>
+                      <span>{stage}</span>
+                      <span className="bg-white/30 rounded-full px-2 py-0.5 text-xs">{cards.length}</span>
+                    </div>
 
-                {/* Cards */}
-                <div className="bg-gray-50 rounded-b-lg p-2 space-y-2 min-h-[120px]">
-                  {cards.length === 0 && (
-                    <div className="text-center text-xs text-gray-300 py-6">暂无</div>
-                  )}
-                  {cards.map(project => {
-                    const days = daysSince(project.stage_entered_at)
-                    const daysClass = stayColor(days)
-                    return (
-                      <div key={project.id}
-                        onClick={() => { setSelectedProject(project); setAdvisorNote(project.advisor_notes || '') }}
-                        className="bg-white rounded-lg border shadow-sm p-3 cursor-pointer hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between gap-1 mb-1.5">
-                          <h4 className="text-sm font-medium text-gray-900 leading-tight line-clamp-2">{project.title}</h4>
-                          {isAdmin && <GripVertical className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" />}
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-500 mb-1.5">
-                          <User className="w-3 h-3" /> {project.student_name}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${daysClass}`}>
-                            <Clock className="w-3 h-3 inline mr-0.5" />{days}天
-                          </span>
-                          {project.updated_at && (
-                            <span className="text-[10px] text-gray-400">
-                              {project.updated_at.slice(0, 10)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
+                    <DroppableColumn stage={stage}>
+                      {cards.length === 0 && (
+                        <div className="text-center text-xs text-gray-300 py-6">暂无</div>
+                      )}
+                      {cards.map(project => (
+                        <DraggableCard
+                          key={project.id}
+                          project={project}
+                          isAdmin={isAdmin}
+                          savingId={savingId}
+                          onOpen={(item) => {
+                            setSelectedProject(item)
+                            setAdvisorNote(item.advisor_notes || '')
+                          }}
+                        />
+                      ))}
+                    </DroppableColumn>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <DragOverlay>
+            {activeProject ? (
+              <div className="w-[200px] rounded-lg border bg-white p-3 shadow-lg">
+                <div className="text-sm font-medium text-gray-900 leading-tight line-clamp-2">
+                  {activeProject.title}
                 </div>
+                <div className="mt-1 text-xs text-gray-500">{activeProject.student_name}</div>
               </div>
-            )
-          })}
-        </div>
-      </div>}
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      )}
 
       {/* Detail Modal */}
       {selectedProject && (
