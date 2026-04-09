@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import {
   LayoutDashboard,
   Users,
@@ -16,6 +17,7 @@ import {
   Wrench,
   Database,
   MessageCircle,
+  KeyRound,
 } from 'lucide-react'
 import NotificationPanel from './NotificationPanel'
 
@@ -28,10 +30,35 @@ export default function Layout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showPwdModal, setShowPwdModal] = useState(false)
+  const [pwdForm, setPwdForm] = useState({ newPwd: '', confirmPwd: '' })
+  const [pwdMsg, setPwdMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [pwdSaving, setPwdSaving] = useState(false)
+
+  const handleChangePwd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (pwdForm.newPwd !== pwdForm.confirmPwd) {
+      setPwdMsg({ type: 'err', text: '两次密码不一致' })
+      return
+    }
+    if (pwdForm.newPwd.length < 6) {
+      setPwdMsg({ type: 'err', text: '密码至少6位' })
+      return
+    }
+    setPwdSaving(true)
+    const { error } = await supabase.auth.updateUser({ password: pwdForm.newPwd })
+    setPwdSaving(false)
+    if (error) {
+      setPwdMsg({ type: 'err', text: error.message })
+    } else {
+      setPwdMsg({ type: 'ok', text: '密码修改成功' })
+      setTimeout(() => { setShowPwdModal(false); setPwdMsg(null); setPwdForm({ newPwd: '', confirmPwd: '' }) }, 1500)
+    }
+  }
 
   const handleSignOut = async () => {
     await signOut()
-    navigate('/login')
+    navigate('/login', { replace: true })
   }
 
   const isStudent = user?.role === 'student'
@@ -82,6 +109,7 @@ export default function Layout() {
     }`
 
   return (
+    <>
     <div className="flex h-screen" style={{ backgroundColor: '#eef1ec' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -173,13 +201,22 @@ export default function Layout() {
                   <p className="text-green-400/40 text-[10px]">{user?.role === 'admin' ? '导师' : '学生'}</p>
                 </div>
               </div>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 text-green-400/50 hover:text-green-300 transition-colors text-xs w-full"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                退出登录
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowPwdModal(true); setPwdMsg(null) }}
+                  className="flex items-center gap-1.5 text-green-400/50 hover:text-green-300 transition-colors text-xs"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  改密码
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-1.5 text-green-400/50 hover:text-green-300 transition-colors text-xs"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  退出登录
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -210,5 +247,53 @@ export default function Layout() {
         </main>
       </div>
     </div>
+
+    {/* Change password modal */}
+    {showPwdModal && (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900">修改密码</h2>
+            <button onClick={() => setShowPwdModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+          </div>
+          <form onSubmit={handleChangePwd} className="px-6 py-5 space-y-4">
+            {pwdMsg && (
+              <div className={`px-4 py-2 rounded-lg text-sm ${pwdMsg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                {pwdMsg.text}
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+              <input
+                type="password"
+                required
+                value={pwdForm.newPwd}
+                onChange={e => setPwdForm(f => ({ ...f, newPwd: e.target.value }))}
+                className="input-field w-full"
+                placeholder="至少6位"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
+              <input
+                type="password"
+                required
+                value={pwdForm.confirmPwd}
+                onChange={e => setPwdForm(f => ({ ...f, confirmPwd: e.target.value }))}
+                className="input-field w-full"
+                placeholder="再输一遍"
+              />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={() => setShowPwdModal(false)} className="btn-secondary flex-1">取消</button>
+              <button type="submit" disabled={pwdSaving} className="btn-primary flex-1">
+                {pwdSaving ? '保存中...' : '确认修改'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
