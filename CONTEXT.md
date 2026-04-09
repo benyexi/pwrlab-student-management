@@ -42,11 +42,29 @@ paper_timeline, reports, milestones, instruments, reservations, files
 - [x] 学生端：毕业节点时间线（倒计时/逾期天数、填写备注）
 - [x] Dashboard：学生视图论文进度管道 + 毕业节点倒计时
 
+## 已知 Bug 与修复记录
+
+### 2026-04-09 生产环境无限加载 spinner
+- **现象**：首页显示深绿色背景 + "加载中..."，不跳转登录页
+- **根因**：AuthContext 仅靠 `onAuthStateChange` 初始化，Supabase v2 某些版本 `INITIAL_SESSION` 事件在生产环境延迟/丢失，`loading` 永远为 `true`
+- **修复**：AuthContext 改为 `getSession()` 显式初始化 + `onAuthStateChange` 跳过 `INITIAL_SESSION`（commit db50df7）
+
+### 2026-04-09 paper_timeline INSERT 被 RLS 拒绝
+- **现象**：论文保存成功但 `paper_timeline` 写入失败："new row violates row-level security policy"
+- **根因**：`paper_timeline` 表没有给学生开 INSERT/SELECT 权限
+- **修复**：前端已推送；**需执行** `scripts/fix_paper_timeline_rls.sql`
+
+### 2026-04-09 学生自己论文不显示（旧数据）
+- **现象**：管理员录入的旧论文有学生名，但学生登录后看不到
+- **根因**：旧论文 `student_name` 字段为空，前端过滤逻辑依赖该字段
+- **修复**：Papers.tsx 改为 `student_name` 为空时回退到 `authors` 字段匹配（commit fc9709a）；SQL 脚本也会补填 `student_name`
+
 ## 待完成任务（按优先级）
 
 ### 需要席老师在 Supabase SQL Editor 执行（必须！）
-- [ ] 执行 `scripts/student_feature_upgrade.sql`：papers 表加 paper_type 字段 + 学生 RLS 写权限
+- [ ] 执行 `scripts/student_feature_upgrade.sql`：papers 表加 paper_type 字段 + 学生论文/毕业节点 RLS 写权限
 - [ ] 执行 `scripts/fix_student_permissions.sql`：projects UPDATE 学生 RLS + profiles.name 批量修正
+- [ ] 执行 `scripts/fix_paper_timeline_rls.sql`：paper_timeline INSERT/SELECT 学生权限 + 旧论文 student_name 补填
 
 ### 之后
 - [ ] 学生端完整体验测试（用学生账号实际登录验证各功能）
