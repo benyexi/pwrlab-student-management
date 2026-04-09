@@ -23,8 +23,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let mounted = true
+
+    // Explicit initial session check — onAuthStateChange alone can stall in some
+    // Supabase v2 builds, leaving `loading` stuck at true forever.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
+      if (session?.user) {
+        fetchProfile(session.user)
+      } else {
+        setUser(null)
+        setLoading(false)
+      }
+    })
+
+    // Subsequent auth changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        if (!mounted) return
+        if (event === 'INITIAL_SESSION') return   // already handled above
         if (session?.user) {
           await fetchProfile(session.user)
         } else {
@@ -33,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     )
-    return () => subscription.unsubscribe()
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchProfile(su: SupabaseUser) {
