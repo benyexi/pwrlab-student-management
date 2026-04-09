@@ -61,10 +61,10 @@ paper_timeline, reports, milestones, instruments, reservations, files
 
 ## 待完成任务（按优先级）
 
-### 需要席老师在 Supabase SQL Editor 执行（必须！）
-- [ ] 执行 `scripts/student_feature_upgrade.sql`：papers 表加 paper_type 字段 + 学生论文/毕业节点 RLS 写权限
-- [ ] 执行 `scripts/fix_student_permissions.sql`：projects UPDATE 学生 RLS + profiles.name 批量修正
-- [ ] 执行 `scripts/fix_paper_timeline_rls.sql`：paper_timeline INSERT/SELECT 学生权限 + 旧论文 student_name 补填
+### ✅ 已在 Supabase SQL Editor 执行（2026-04-09）
+- [x] `scripts/student_feature_upgrade.sql`：papers.paper_type 字段 + 学生论文/毕业节点 RLS 写权限
+- [x] `scripts/fix_student_permissions.sql`：projects UPDATE 学生 RLS + profiles.name 批量修正
+- [x] `scripts/fix_paper_timeline_rls.sql`：paper_timeline INSERT/SELECT 学生权限 + 旧论文 student_name 补填
 
 ### 之后
 - [ ] 学生端完整体验测试（用学生账号实际登录验证各功能）
