@@ -363,9 +363,13 @@ export default function Papers() {
     }
   }, [])
 
-  // Student sees only their own papers; admin sees all
+  // Student sees only their own papers; admin sees all.
+  // Match on student_name first (new field), fall back to authors (legacy).
   const filtered = papers.filter((p) => {
-    if (isStudent && user && p.student_name !== user.name) return false
+    if (isStudent && user) {
+      const byName = p.student_name ? p.student_name === user.name : (p.authors || '').includes(user.name)
+      if (!byName) return false
+    }
     if (filterStatus && p.status !== filterStatus) return false
     if (
       search &&
