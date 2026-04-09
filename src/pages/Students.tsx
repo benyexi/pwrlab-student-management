@@ -57,6 +57,7 @@ export default function Students() {
   const [form, setForm] = useState<FormData>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const load = async () => {
     const { data } = await getStudents()
@@ -66,16 +67,22 @@ export default function Students() {
 
   useEffect(() => { load() }, [])
 
-  const filtered = students.filter((s) => {
-    const matchSearch =
-      !search ||
-      s.name.includes(search) ||
-      s.student_id.includes(search) ||
-      s.research_direction.includes(search)
-    const matchDegree = filterDegree === 'all' || s.degree_type === filterDegree
-    const matchStatus = filterStatus === 'all' || s.status === filterStatus
-    return matchSearch && matchDegree && matchStatus
-  })
+  const filtered = students
+    .filter((s) => {
+      const matchSearch =
+        !search ||
+        s.name.includes(search) ||
+        s.student_id.includes(search) ||
+        s.research_direction.includes(search)
+      const matchDegree = filterDegree === 'all' || s.degree_type === filterDegree
+      const matchStatus = filterStatus === 'all' || s.status === filterStatus
+      return matchSearch && matchDegree && matchStatus
+    })
+    .sort((a, b) =>
+      sortOrder === 'desc'
+        ? (b.enrollment_year ?? 0) - (a.enrollment_year ?? 0)
+        : (a.enrollment_year ?? 0) - (b.enrollment_year ?? 0)
+    )
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -188,7 +195,15 @@ export default function Students() {
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-5 py-3 font-medium text-gray-500">姓名</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">学号</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500">入学年份</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">
+                    <button
+                      onClick={() => setSortOrder(o => o === 'desc' ? 'asc' : 'desc')}
+                      className="flex items-center gap-1 hover:text-gray-800"
+                    >
+                      入学年份
+                      <span className="text-xs">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                    </button>
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">学位</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">研究方向</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">预计毕业</th>
