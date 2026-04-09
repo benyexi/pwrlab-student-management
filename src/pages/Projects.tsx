@@ -120,6 +120,8 @@ function DraggableCard({
 export default function Projects() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  const isMyProject = (p: Project) =>
+    !isAdmin && (p.student_name === user?.name || p.student_id === user?.id)
 
   useEffect(() => { document.title = '研究进展 | PWRlab' }, [])
 
@@ -496,7 +498,7 @@ export default function Projects() {
                         <DraggableCard
                           key={project.id}
                           project={project}
-                          isAdmin={isAdmin}
+                          isAdmin={isAdmin || isMyProject(project)}
                           savingId={savingId}
                           onOpen={(item) => {
                             setSelectedProject(item)
@@ -546,7 +548,7 @@ export default function Projects() {
               )}
 
               {/* Stage controls */}
-              {isAdmin && (
+              {(isAdmin || isMyProject(selectedProject)) && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-700">阶段推进</p>
                   <input type="text" placeholder="阶段变更备注（可选）..." value={stageNote} onChange={e => setStageNote(e.target.value)}

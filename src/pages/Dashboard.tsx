@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ElementType } from 'react'
-import { Users, BookOpen, GraduationCap, FlaskConical, Microscope, Beaker } from 'lucide-react'
-import { getStudents, supabase } from '../lib/supabase'
+import { Users, BookOpen, GraduationCap, FlaskConical, Microscope, Beaker, Pencil } from 'lucide-react'
+import { getStudents, updateStudent, supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveOwnedStudents } from '../lib/studentOwnership'
 import type { Student, DashboardStats } from '../types'
@@ -108,6 +108,10 @@ export default function Dashboard() {
   const [students, setStudents] = useState<Student[]>([])
   const [myPapers, setMyPapers] = useState<{ id: string; title: string; status: string; authors: string; student_id?: string; student_name?: string }[]>([])
   const [myMilestones, setMyMilestones] = useState<{ id: string; type: string; status: string; planned_date: string; student_id?: string; student_name?: string }[]>([])
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editForm, setEditForm] = useState({ research_direction: '', expected_graduation: '', email: '', phone: '', notes: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editMsg, setEditMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { document.title = '仪表盘 | PWRlab' }, [])
@@ -169,7 +173,43 @@ export default function Dashboard() {
 
   if (user?.role === 'student') {
     const myStudent = students[0]
+
+    const openEdit = () => {
+      if (!myStudent) return
+      setEditForm({
+        research_direction: myStudent.research_direction ?? '',
+        expected_graduation: myStudent.expected_graduation ?? '',
+        email: myStudent.email ?? '',
+        phone: myStudent.phone ?? '',
+        notes: myStudent.notes ?? '',
+      })
+      setEditMsg(null)
+      setShowEditModal(true)
+    }
+
+    const handleEditSave = async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!myStudent) return
+      setEditSaving(true)
+      const { error } = await updateStudent(myStudent.id, {
+        research_direction: editForm.research_direction,
+        expected_graduation: editForm.expected_graduation,
+        email: editForm.email,
+        phone: editForm.phone,
+        notes: editForm.notes,
+      })
+      setEditSaving(false)
+      if (error) {
+        setEditMsg({ type: 'err', text: (error as Error).message })
+      } else {
+        setStudents(prev => prev.map(s => s.id === myStudent.id ? { ...s, ...editForm } : s))
+        setEditMsg({ type: 'ok', text: '信息已更新' })
+        setTimeout(() => { setShowEditModal(false); setEditMsg(null) }, 1200)
+      }
+    }
+
     return (
+      <>
       <div className="space-y-6 max-w-5xl mx-auto">
         <div>
           <h1 className="text-xl font-bold text-gray-900 serif-cn">个人概览</h1>
@@ -191,8 +231,14 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-500 mt-0.5">
                     {myStudent.degree_type} · {myStudent.enrollment_year} 级 · {myStudent.research_direction}
                   </p>
+                  {myStudent.email && <p className="text-xs text-gray-400 mt-0.5">{myStudent.email}{myStudent.phone ? ' · ' + myStudent.phone : ''}</p>}
                 </div>
-                <span className={statusColor[myStudent.status] ?? 'badge-gray'}>{myStudent.status}</span>
+                <div className="flex items-center gap-2">
+                  <span className={statusColor[myStudent.status] ?? 'badge-gray'}>{myStudent.status}</span>
+                  <button onClick={openEdit} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors" title="编辑我的信息">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
             <div className="card overflow-hidden">
@@ -239,6 +285,80 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* Edit my info modal */}
+
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-900">编辑我的信息</h2>
+              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <form onSubmit={handleEditSave} className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+              {editMsg && (
+                <div className={`px-4 py-2 rounded-lg text-sm ${editMsg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {editMsg.text}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">研究方向</label>
+                <textarea
+                  rows={2}
+                  value={editForm.research_direction}
+                  onChange={e => setEditForm(f => ({ ...f, research_direction: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">预计毕业时间</label>
+                <input
+                  type="text"
+                  placeholder="如 2027"
+                  value={editForm.expected_graduation}
+                  onChange={e => setEditForm(f => ({ ...f, expected_graduation: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                <input
+                  type="text"
+                  value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                <textarea
+                  rows={2}
+                  value={editForm.notes}
+                  onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                  className="input-field w-full"
+                />
+              </div>
+              <p className="text-xs text-gray-400">姓名、学号、入学年份、学位类型由导师管理，如需修改请联系席老师。</p>
+            </form>
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+              <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary">取消</button>
+              <button type="submit" form="" disabled={editSaving} onClick={handleEditSave} className="btn-primary">
+                {editSaving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     )
   }
 
