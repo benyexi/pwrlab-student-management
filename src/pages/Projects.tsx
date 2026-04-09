@@ -103,9 +103,14 @@ function DraggableCard({
       <div className="flex items-center gap-1 text-xs text-gray-500 mb-1.5">
         <User className="w-3 h-3" /> {project.student_name}
       </div>
+      {project.description && (
+        <p className="text-[11px] text-gray-400 leading-snug line-clamp-2 mb-1.5">
+          {project.description.slice(0, 50)}{project.description.length > 50 ? '…' : ''}
+        </p>
+      )}
       <div className="flex items-center justify-between">
         <span className={`text-xs px-1.5 py-0.5 rounded ${daysClass}`}>
-          <Clock className="w-3 h-3 inline mr-0.5" />{days}天
+          <Clock className="w-3 h-3 inline mr-0.5" />已{days}天
         </span>
         {project.updated_at && (
           <span className="text-[10px] text-gray-400">
@@ -141,6 +146,8 @@ export default function Projects() {
   const [activeProject, setActiveProject] = useState<Project | null>(null)
   const [stageNote, setStageNote] = useState('')
   const [advisorNote, setAdvisorNote] = useState('')
+  const [descriptionEdit, setDescriptionEdit] = useState('')
+  const [savingDesc, setSavingDesc] = useState(false)
 
   // New project form
   const [newTitle, setNewTitle] = useState('')
@@ -341,6 +348,19 @@ export default function Projects() {
     await changeStage(project, nextStage as ProjectStage)
   }
 
+  const saveDescription = async () => {
+    if (!selectedProject) return
+    setSavingDesc(true)
+    const { error: e } = await supabase.from('projects').update({
+      description: descriptionEdit, updated_at: new Date().toISOString(),
+    }).eq('id', selectedProject.id)
+    if (!e) {
+      setProjects(prev => prev.map(p => p.id === selectedProject.id ? { ...p, description: descriptionEdit } : p))
+      setSelectedProject({ ...selectedProject, description: descriptionEdit })
+    }
+    setSavingDesc(false)
+  }
+
   const saveAdvisorNote = async () => {
     if (!selectedProject) return
     const { error: e } = await supabase.from('projects').update({
@@ -475,6 +495,24 @@ export default function Projects() {
         </div>
       )}
 
+      {/* Student Summary Card */}
+      {!isAdmin && projects.length > 0 && (() => {
+        const myProjects = projects.filter(p => isMyProject(p))
+        if (myProjects.length === 0) return null
+        const latest = myProjects[0]
+        const totalDays = myProjects.reduce((sum, p) => sum + daysSince(p.start_date), 0)
+        return (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-green-900 mb-2">我的研究进展概览</p>
+            <div className="flex flex-wrap gap-4 text-sm text-green-800">
+              <span>课题数：<strong>{myProjects.length}</strong> 个</span>
+              <span>当前主要阶段：<strong style={{ color: STAGE_COLORS[latest.stage] }}>{latest.stage}</strong></span>
+              <span>累计推进：<strong>{totalDays}</strong> 天</span>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Kanban Board */}
       {projects.length > 0 && (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -503,6 +541,7 @@ export default function Projects() {
                           onOpen={(item) => {
                             setSelectedProject(item)
                             setAdvisorNote(item.advisor_notes || '')
+                            setDescriptionEdit(item.description || '')
                           }}
                         />
                       ))}
@@ -543,8 +582,30 @@ export default function Projects() {
                 <div><span className="text-gray-400">开始日期</span><p>{selectedProject.start_date}</p></div>
                 <div><span className="text-gray-400">预计完成</span><p>{selectedProject.expected_end_date || '—'}</p></div>
               </div>
-              {selectedProject.description && (
-                <div className="text-sm"><span className="text-gray-400">描述</span><p className="mt-1">{selectedProject.description}</p></div>
+              {/* Admin: read-only description */}
+              {isAdmin && selectedProject.description && (
+                <div className="text-sm"><span className="text-gray-400">学生进展说明</span><p className="mt-1 text-gray-700 bg-gray-50 rounded-lg p-2">{selectedProject.description}</p></div>
+              )}
+              {/* Student: editable description for own project */}
+              {!isAdmin && isMyProject(selectedProject) && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">进展说明</p>
+                  <textarea
+                    value={descriptionEdit}
+                    onChange={e => setDescriptionEdit(e.target.value)}
+                    rows={3}
+                    placeholder="记录当前研究进展、遇到的问题等..."
+                    className="w-full text-sm border rounded-lg px-3 py-2 resize-none"
+                  />
+                  <button
+                    onClick={saveDescription}
+                    disabled={savingDesc}
+                    className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50"
+                    style={{ backgroundColor: '#1a3a2a' }}
+                  >
+                    {savingDesc ? '保存中…' : '保存说明'}
+                  </button>
+                </div>
               )}
 
               {/* Stage controls */}
@@ -610,6 +671,26 @@ export default function Projects() {
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-1">导师批注</p>
                   <p className="text-sm text-gray-600 bg-green-50 rounded-lg p-3">{selectedProject.advisor_notes}</p>
+                </div>
+              )}
+              {!isAdmin && isMyProject(selectedProject) && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">我的进展说明</p>
+                  <textarea
+                    value={descriptionEdit}
+                    onChange={e => setDescriptionEdit(e.target.value)}
+                    rows={4}
+                    className="w-full text-sm border rounded-lg px-3 py-2"
+                    placeholder="记录你的研究进展、遇到的问题、下一步计划..."
+                  />
+                  <button
+                    onClick={saveDescription}
+                    disabled={savingDesc}
+                    className="mt-2 px-4 py-1.5 text-sm text-white rounded-lg disabled:opacity-50"
+                    style={{ backgroundColor: '#1a3a2a' }}
+                  >
+                    {savingDesc ? '保存中...' : '保存进展'}
+                  </button>
                 </div>
               )}
             </div>

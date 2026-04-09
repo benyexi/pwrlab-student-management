@@ -241,44 +241,81 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            {/* Papers — pipeline view */}
             <div className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 className="text-sm font-semibold text-gray-700">我的论文（{myPapers.length} 篇）</h2>
-                <Link to="/papers" className="text-xs text-primary-600 hover:text-primary-700 font-medium">查看全部 →</Link>
+                <Link to="/papers" className="text-xs text-primary-600 hover:text-primary-700 font-medium">管理论文 →</Link>
               </div>
               {myPapers.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-gray-400">暂无论文记录</div>
+                <div className="px-5 py-8 text-center text-sm text-gray-400">暂无论文记录，前往"论文管理"添加</div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {myPapers.slice(0, 5).map((p) => (
-                    <div key={p.id} className="px-5 py-3 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{p.title}</p>
+                  {myPapers.slice(0, 6).map((p) => {
+                    const PIPELINE = ['在写','投稿中','审稿中','修改中','已接收','已发表']
+                    const idx = PIPELINE.indexOf(p.status)
+                    const pct = idx < 0 ? 0 : Math.round((idx + 1) / PIPELINE.length * 100)
+                    const statusCls: Record<string, string> = {
+                      '在写': 'bg-gray-100 text-gray-600',
+                      '投稿中': 'bg-blue-100 text-blue-700',
+                      '审稿中': 'bg-yellow-100 text-yellow-700',
+                      '修改中': 'bg-orange-100 text-orange-700',
+                      '已接收': 'bg-green-100 text-green-700',
+                      '已发表': 'bg-primary-100 text-primary-700',
+                    }
+                    return (
+                      <div key={p.id} className="px-5 py-3.5">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <p className="text-sm font-medium text-gray-900 truncate flex-1">{p.title}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${statusCls[p.status] ?? 'bg-gray-100 text-gray-600'}`}>{p.status}</span>
+                        </div>
+                        <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-primary-500 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
                       </div>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">{p.status}</span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
+
+            {/* Milestones — countdown timeline */}
             <div className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 className="text-sm font-semibold text-gray-700">毕业节点</h2>
-                <Link to="/milestones" className="text-xs text-primary-600 hover:text-primary-700 font-medium">查看全部 →</Link>
+                <Link to="/milestones" className="text-xs text-primary-600 hover:text-primary-700 font-medium">查看详情 →</Link>
               </div>
               {myMilestones.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-gray-400">暂无节点信息</div>
+                <div className="px-5 py-8 text-center text-sm text-gray-400">暂无节点，请联系导师添加</div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {myMilestones.map((m) => (
-                    <div key={m.id} className="px-5 py-3 flex items-center justify-between">
-                      <span className="text-sm text-gray-700">{m.type}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">{m.planned_date}</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{m.status}</span>
+                  {myMilestones.map((m) => {
+                    const today = new Date(); today.setHours(0,0,0,0)
+                    const planned = m.planned_date ? new Date(m.planned_date) : null
+                    const diffDays = planned ? Math.round((planned.getTime() - today.getTime()) / 86400000) : null
+                    const statusCls: Record<string, string> = {
+                      '未开始': 'bg-gray-100 text-gray-600',
+                      '进行中': 'bg-blue-100 text-blue-700',
+                      '已完成': 'bg-green-100 text-green-700',
+                      '已逾期': 'bg-red-100 text-red-700',
+                    }
+                    return (
+                      <div key={m.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${statusCls[m.status] ?? 'bg-gray-100 text-gray-600'}`}>{m.status}</span>
+                          <span className="text-sm text-gray-800 font-medium">{m.type}</span>
+                        </div>
+                        <div className="text-right text-xs shrink-0">
+                          <p className="text-gray-400">{m.planned_date}</p>
+                          {m.status !== '已完成' && diffDays !== null && (
+                            <p className={diffDays < 0 ? 'text-red-500 font-medium' : diffDays <= 30 ? 'text-yellow-600 font-medium' : 'text-gray-400'}>
+                              {diffDays < 0 ? `逾期 ${-diffDays} 天` : diffDays === 0 ? '今天' : `还有 ${diffDays} 天`}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

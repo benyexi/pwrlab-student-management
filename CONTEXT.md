@@ -24,34 +24,32 @@ paper_timeline, reports, milestones, instruments, reservations, files
 - [x] 管理员 Dashboard + 通知铃铛
 - [x] 学生管理（增删改查、详情页）
 - [x] 论文管理（状态、时间线、分区、IF、DOI）
-- [x] 研究进展看板（9个阶段）
+- [x] 研究进展看板（9个阶段 + 拖拽）
 - [x] 周报系统（提交、导师批注）
 - [x] 提问答疑模块
 - [x] 野外站点（22个CP-GPE站点）
 - [x] 天气数据（OpenWeatherMap API自动 + 手动录入）
 - [x] 毕业节点提醒
 - [x] 仪器预约
-- [x] RLS 权限硬化（supabase_rls_hardening.sql 已在 Supabase 执行）
+- [x] RLS 权限硬化
 - [x] GitHub Actions CI/CD
-- [x] README.md 重写
-- [x] Projects.tsx 空状态提示
-- [x] 表单字段与 schema 对齐
-- [x] 移动端适配（表格横滚、弹窗高度）
-- [x] 各页面 document.title
+- [x] 移动端适配
+- [x] 首屏加载优化（React.lazy + Suspense + manualChunks）
+- [x] 学生端：改密码、退出登录修复、登录提速
+- [x] 学生端：个人基本信息编辑（研究方向、预计毕业、邮箱、手机、备注）
+- [x] 学生端：论文全状态管理（毕业论文/期刊/会议，6步进度管道，自主增删改）
+- [x] 学生端：研究进展（自己课题拖拽阶段、填写进展说明）
+- [x] 学生端：毕业节点时间线（倒计时/逾期天数、填写备注）
+- [x] Dashboard：学生视图论文进度管道 + 毕业节点倒计时
 
 ## 待完成任务（按优先级）
 
-### 下一批（可无人值守执行）
-- [x] Reports.tsx 空状态提示
-- [x] Reservations.tsx 空状态提示
-- [x] FieldData.tsx 空状态提示
-- [x] Layout.tsx 侧边栏手机端点击菜单后自动收起（NavLink onClick 已实现）
+### 需要席老师在 Supabase SQL Editor 执行（必须！）
+- [ ] 执行 `scripts/student_feature_upgrade.sql`：papers 表加 paper_type 字段 + 学生 RLS 写权限
+- [ ] 执行 `scripts/fix_student_permissions.sql`：projects UPDATE 学生 RLS + profiles.name 批量修正
 
-### 之后（需要席老师在场）
-- [ ] 学生端完整体验测试与修复（需要学生账号实际登录验证）
-- [x] 天气数据折线图（站点详情页10天天气可视化，SVG 实现温度折线+降雨柱状）
-- [x] 研究进展看板拖拽（@dnd-kit/core，GripVertical 把手，5px 激活阈值，拖入列高亮，复用 changeStage）
-- [x] 首屏加载优化（React.lazy + Suspense 懒加载所有页面，manualChunks 拆分 vendor-react/vendor-supabase/vendor-icons）
+### 之后
+- [ ] 学生端完整体验测试（用学生账号实际登录验证各功能）
 - [ ] 通知邮件提醒（Supabase Edge Function）
 
 ## 数据操作日志

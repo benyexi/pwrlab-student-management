@@ -320,7 +320,22 @@ export default function Reservations() {
             </tbody>
           </table>
           {!loading && filtered.length === 0 && (
-            <div className="py-10 text-center text-gray-400">暂无预约记录</div>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Calendar className="w-12 h-12 text-gray-200 mb-3" />
+              <h3 className="text-base font-medium text-gray-400 mb-1">
+                {reservations.length === 0 ? '暂无预约记录' : '没有找到匹配的预约'}
+              </h3>
+              <p className="text-sm text-gray-300 mb-4">
+                {reservations.length === 0 ? '点击"新建预约"提交您的第一份预约申请' : '尝试调整搜索条件'}
+              </p>
+              {reservations.length === 0 && (
+                <button onClick={() => setShowForm(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm text-white rounded-lg"
+                  style={{ backgroundColor: '#1a3a2a' }}>
+                  <Plus className="w-4 h-4" /> 新建预约
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -295,7 +295,22 @@ export default function Reports() {
         </div>
       )}
 
-      {!loading && !error && cards.length === 0 && (
+      {!loading && !error && scopedStudents.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <AlertCircle className="w-16 h-16 text-gray-200 mb-4" />
+          <h3 className="text-lg font-medium text-gray-400 mb-1">暂无在校生数据</h3>
+          <p className="text-sm text-gray-300 mb-6">还没有在读学生记录，周报统计暂无数据</p>
+          {user?.role === 'admin' && (
+            <button onClick={() => navigate('/students')}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm text-white rounded-lg"
+              style={{ backgroundColor: '#1a3a2a' }}>
+              前往学生管理 <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {!loading && !error && scopedStudents.length > 0 && cards.length === 0 && (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">
           <AlertCircle className="mx-auto h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm">没有找到匹配的在校生</p>

@@ -506,9 +506,16 @@ export default function FieldData() {
             <p className="text-base font-medium text-gray-400">
               {observations.length === 0 ? '暂无野外观测记录' : '没有找到匹配的数据'}
             </p>
-            <p className="text-sm text-gray-300 mt-1">
+            <p className="text-sm text-gray-300 mt-1 mb-4">
               {observations.length === 0 ? '点击"录入数据"添加第一条记录' : '尝试调整筛选条件'}
             </p>
+            {observations.length === 0 && (
+              <button onClick={() => setShowForm(true)}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm text-white rounded-lg"
+                style={{ backgroundColor: '#1a3a2a' }}>
+                <Plus className="w-4 h-4" /> 录入数据
+              </button>
+            )}
           </div>
         )}
       </div>

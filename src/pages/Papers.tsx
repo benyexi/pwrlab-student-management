@@ -2,26 +2,38 @@ import { useEffect, useMemo, useState } from 'react'
 import { FileText, Search, Plus, X, BarChart3, BookOpen, Edit2, Trash2, Layers, CalendarDays } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { Paper, PaperPartition, PaperStatus } from '../types'
+import type { Paper, PaperPartition, PaperStatus, PaperType } from '../types'
 
 const STATUS_COLORS: Record<PaperStatus, string> = {
   '在写': 'bg-gray-100 text-gray-600',
   '投稿中': 'bg-blue-50 text-blue-600',
   '审稿中': 'bg-amber-50 text-amber-600',
-  '修改中': 'bg-orange-50 text-orange-600',
+  '修改中': 'bg-amber-50 text-amber-700',
   '已接收': 'bg-green-50 text-green-600',
   '已发表': 'bg-emerald-50 text-emerald-700',
 }
 
+// Ordered pipeline steps for the status progress bar
+const STATUS_PIPELINE: PaperStatus[] = ['在写', '投稿中', '审稿中', '修改中', '已接收', '已发表']
+
 const PREPARATION_STATUSES: PaperStatus[] = ['在写', '投稿中', '审稿中', '修改中']
 
 const PARTITION_OPTIONS: PaperPartition[] = ['1区', '2区', '3区', '4区', '2区TOP', 'EI', 'CSCD', '卓越期刊']
+
+const PAPER_TYPE_OPTIONS: PaperType[] = ['毕业论文', '期刊论文', '会议论文']
+
+const PAPER_TYPE_COLORS: Record<PaperType, string> = {
+  '毕业论文': 'bg-purple-50 text-purple-600 border border-purple-200',
+  '期刊论文': 'bg-sky-50 text-sky-600 border border-sky-200',
+  '会议论文': 'bg-orange-50 text-orange-600 border border-orange-200',
+}
 
 type PaperForm = {
   title: string
   authors: string
   journal: string
   status: PaperStatus
+  paper_type: PaperType
   impact_factor: string
   journal_partitions: PaperPartition[]
   submission_date: string
@@ -35,6 +47,7 @@ const EMPTY_FORM: PaperForm = {
   authors: '',
   journal: '',
   status: '在写',
+  paper_type: '期刊论文',
   impact_factor: '',
   journal_partitions: [],
   submission_date: '',
@@ -74,7 +87,7 @@ function yearToDateString(year: string): string | null {
 
 function formatPaperSaveError(message: string): string {
   if (message.includes('journal_partition') || message.includes('papers_journal_partition_check')) {
-    return '当前数据库仍限制“分区”为单选，无法保存多选组合。请先在 Supabase 执行约束清理 SQL（我已给你）。'
+    return '当前数据库仍限制"分区"为单选，无法保存多选组合。请先在 Supabase 执行约束清理 SQL（我已给你）。'
   }
   return message
 }
@@ -86,16 +99,209 @@ function toPaper(row: any, timeline: { date: string; event: string }[]): Paper {
     authors: row.authors || '',
     journal: row.journal || '',
     status: (row.status as PaperStatus) || '在写',
+    paper_type: (row.paper_type as PaperType) || undefined,
     submission_date: row.submit_date || undefined,
     publish_year: getYearFromDate(row.publish_date || undefined),
     journal_partition: row.journal_partition || undefined,
     corresponding_author: row.corresponding_author || undefined,
     doi: row.doi || undefined,
     impact_factor: row.impact_factor ?? undefined,
+    student_name: row.student_name || undefined,
     timeline,
     created_at: row.created_at || undefined,
     updated_at: row.updated_at || undefined,
   }
+}
+
+// Status pipeline progress bar component
+function StatusPipeline({ status }: { status: PaperStatus }) {
+  const currentIndex = STATUS_PIPELINE.indexOf(status)
+  return (
+    <div className="flex items-center gap-0 w-full mt-3">
+      {STATUS_PIPELINE.map((step, i) => {
+        const isActive = i === currentIndex
+        const isDone = i < currentIndex
+        let dotClass = 'w-2.5 h-2.5 rounded-full border-2 flex-shrink-0 '
+        if (isActive) dotClass += 'bg-green-600 border-green-600'
+        else if (isDone) dotClass += 'bg-green-300 border-green-300'
+        else dotClass += 'bg-gray-200 border-gray-300'
+
+        let labelClass = 'text-[10px] font-medium '
+        if (isActive) labelClass += 'text-green-700'
+        else if (isDone) labelClass += 'text-green-400'
+        else labelClass += 'text-gray-400'
+
+        return (
+          <div key={step} className="flex items-center flex-1 min-w-0">
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={dotClass} />
+              <span className={labelClass + ' mt-0.5 whitespace-nowrap'}>{step}</span>
+            </div>
+            {i < STATUS_PIPELINE.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-0.5 ${i < currentIndex ? 'bg-green-300' : 'bg-gray-200'}`} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Paper type badge
+function PaperTypeBadge({ paperType }: { paperType?: PaperType }) {
+  if (!paperType) return null
+  return (
+    <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${PAPER_TYPE_COLORS[paperType]}`}>
+      {paperType}
+    </span>
+  )
+}
+
+// Shared form fields for add/edit
+function PaperFormFields({
+  form,
+  setForm,
+  isStudent,
+}: {
+  form: PaperForm
+  setForm: (f: PaperForm) => void
+  isStudent: boolean
+}) {
+  return (
+    <>
+      <div>
+        <label className="block text-sm text-gray-600 mb-1">标题</label>
+        <input
+          type="text"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          className="w-full px-3 py-2 border rounded-lg text-sm"
+          required
+        />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">作者</label>
+          <input
+            type="text"
+            value={form.authors}
+            onChange={(e) => setForm({ ...form, authors: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            required={!isStudent}
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">期刊 / 会议</label>
+          <input
+            type="text"
+            value={form.journal}
+            onChange={(e) => setForm({ ...form, journal: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            required={!isStudent}
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">论文类型</label>
+          <select
+            value={form.paper_type}
+            onChange={(e) => setForm({ ...form, paper_type: e.target.value as PaperType })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+          >
+            {PAPER_TYPE_OPTIONS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">状态</label>
+          <select
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as PaperStatus })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+          >
+            {Object.keys(STATUS_COLORS).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">影响因子</label>
+          <input
+            type="number"
+            step="0.1"
+            value={form.impact_factor}
+            onChange={(e) => setForm({ ...form, impact_factor: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">投稿日期</label>
+          <input
+            type="date"
+            value={form.submission_date}
+            onChange={(e) => setForm({ ...form, submission_date: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">发表年份</label>
+          <input
+            type="number"
+            min="1900"
+            max="3000"
+            value={form.publish_year}
+            onChange={(e) => setForm({ ...form, publish_year: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            placeholder="如 2026"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 mb-1">DOI</label>
+          <input
+            type="text"
+            value={form.doi}
+            onChange={(e) => setForm({ ...form, doi: e.target.value })}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm text-gray-600 mb-2">分区（可多选）</label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {PARTITION_OPTIONS.map((partition) => (
+            <label key={partition} className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.journal_partitions.includes(partition)}
+                onChange={() =>
+                  setForm({
+                    ...form,
+                    journal_partitions: form.journal_partitions.includes(partition)
+                      ? form.journal_partitions.filter((item) => item !== partition)
+                      : [...form.journal_partitions, partition],
+                  })
+                }
+                className="rounded border-gray-300"
+              />
+              <span>{partition}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm text-gray-600 mb-1">通讯作者</label>
+        <input
+          type="text"
+          value={form.corresponding_author}
+          onChange={(e) => setForm({ ...form, corresponding_author: e.target.value })}
+          className="w-full px-3 py-2 border rounded-lg text-sm"
+          placeholder="可填多个，使用逗号分隔"
+        />
+      </div>
+    </>
+  )
 }
 
 export default function Papers() {
@@ -157,8 +363,9 @@ export default function Papers() {
     }
   }, [])
 
+  // Student sees only their own papers; admin sees all
   const filtered = papers.filter((p) => {
-    if (isStudent && user && !(p.authors || '').includes(user.name)) return false
+    if (isStudent && user && p.student_name !== user.name) return false
     if (filterStatus && p.status !== filterStatus) return false
     if (
       search &&
@@ -220,10 +427,31 @@ export default function Papers() {
     )
   }
 
-  const published = papers.filter((p) => p.status === '已发表').length
-  const accepted = papers.filter((p) => p.status === '已接收').length
-  const inReview = papers.filter((p) => p.status === '审稿中' || p.status === '投稿中').length
-  const journals = [...new Set(papers.map((p) => p.journal))]
+  // Stats: for students, show their own papers only
+  const statPapers = isStudent && user ? papers.filter((p) => p.student_name === user.name) : papers
+  const published = statPapers.filter((p) => p.status === '已发表').length
+  const accepted = statPapers.filter((p) => p.status === '已接收').length
+  const inReview = statPapers.filter((p) => p.status === '审稿中' || p.status === '投稿中').length
+  const journals = [...new Set(statPapers.map((p) => p.journal))]
+
+  function buildPayload(f: PaperForm, extra?: Record<string, unknown>) {
+    // paper_type: include only if supported (safe to always send — DB will ignore unknown columns
+    // if the column doesn't exist yet we catch the error gracefully)
+    return {
+      title: f.title,
+      authors: f.authors,
+      journal: f.journal,
+      status: f.status,
+      paper_type: f.paper_type || null,
+      impact_factor: f.impact_factor ? parseFloat(f.impact_factor) : null,
+      journal_partition: stringifyPartitionTags(f.journal_partitions),
+      submit_date: f.submission_date || null,
+      publish_date: yearToDateString(f.publish_year),
+      corresponding_author: f.corresponding_author.trim() || null,
+      doi: f.doi.trim() || null,
+      ...extra,
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -232,24 +460,30 @@ export default function Papers() {
     try {
       const createdAt = new Date().toISOString()
       const today = createdAt.slice(0, 10)
-      const payload = {
-        title: form.title,
-        authors: form.authors,
-        journal: form.journal,
-        status: form.status,
-        impact_factor: form.impact_factor ? parseFloat(form.impact_factor) : null,
-        journal_partition: stringifyPartitionTags(form.journal_partitions),
-        submit_date: form.submission_date || null,
-        publish_date: yearToDateString(form.publish_year),
-        corresponding_author: form.corresponding_author.trim() || null,
-        doi: form.doi.trim() || null,
+
+      // For students, automatically set student_name
+      const extraFields: Record<string, unknown> = { created_at: createdAt, updated_at: createdAt }
+      if (isStudent && user) {
+        extraFields.student_name = user.name
       }
 
-      const { data: paperRow, error: paperError } = await supabase
-        .from('papers')
-        .insert([{ ...payload, created_at: createdAt, updated_at: createdAt }])
-        .select('*')
-        .single()
+      const payload = buildPayload(form, extraFields)
+
+      // Try with paper_type first; if column doesn't exist, retry without it
+      let paperRow: any = null
+      let paperError: any = null
+
+      const result1 = await supabase.from('papers').insert([payload]).select('*').single()
+      paperRow = result1.data
+      paperError = result1.error
+
+      if (paperError && (paperError.message.includes('paper_type') || paperError.code === '42703')) {
+        // paper_type column doesn't exist yet — retry without it
+        const { paper_type: _pt, ...payloadWithout } = payload as any
+        const result2 = await supabase.from('papers').insert([payloadWithout]).select('*').single()
+        paperRow = result2.data
+        paperError = result2.error
+      }
 
       if (paperError) {
         setError(formatPaperSaveError(paperError.message))
@@ -277,6 +511,7 @@ export default function Papers() {
       authors: paper.authors,
       journal: paper.journal,
       status: paper.status,
+      paper_type: (paper.paper_type as PaperType) || '期刊论文',
       impact_factor: paper.impact_factor !== undefined ? String(paper.impact_factor) : '',
       journal_partitions: parsePartitionTags(paper.journal_partition),
       submission_date: paper.submission_date || '',
@@ -284,6 +519,12 @@ export default function Papers() {
       corresponding_author: paper.corresponding_author || '',
       doi: paper.doi || '',
     })
+  }
+
+  // Check if the current user can edit this paper
+  function canEditPaper(paper: Paper): boolean {
+    if (!isStudent) return true // admin can always edit
+    return user != null && paper.student_name === user.name
   }
 
   async function handleUpdatePaper(e: React.FormEvent) {
@@ -294,26 +535,21 @@ export default function Papers() {
     setError(null)
     try {
       const updatedAt = new Date().toISOString()
-      const payload = {
-        title: editForm.title,
-        authors: editForm.authors,
-        journal: editForm.journal,
-        status: editForm.status,
-        impact_factor: editForm.impact_factor ? parseFloat(editForm.impact_factor) : null,
-        journal_partition: stringifyPartitionTags(editForm.journal_partitions),
-        submit_date: editForm.submission_date || null,
-        publish_date: yearToDateString(editForm.publish_year),
-        corresponding_author: editForm.corresponding_author.trim() || null,
-        doi: editForm.doi.trim() || null,
-        updated_at: updatedAt,
-      }
+      const payload = buildPayload(editForm, { updated_at: updatedAt })
 
-      const { data: updatedRow, error: updateError } = await supabase
-        .from('papers')
-        .update(payload)
-        .eq('id', editingId)
-        .select('*')
-        .single()
+      let updatedRow: any = null
+      let updateError: any = null
+
+      const result1 = await supabase.from('papers').update(payload).eq('id', editingId).select('*').single()
+      updatedRow = result1.data
+      updateError = result1.error
+
+      if (updateError && (updateError.message.includes('paper_type') || updateError.code === '42703')) {
+        const { paper_type: _pt, ...payloadWithout } = payload as any
+        const result2 = await supabase.from('papers').update(payloadWithout).eq('id', editingId).select('*').single()
+        updatedRow = result2.data
+        updateError = result2.error
+      }
 
       if (updateError) {
         setError(formatPaperSaveError(updateError.message))
@@ -362,6 +598,80 @@ export default function Papers() {
     )
   }
 
+  // Reusable paper card renderer
+  function renderPaperCard(paper: Paper) {
+    const editable = canEditPaper(paper)
+    return (
+      <div key={paper.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="p-5 cursor-pointer" onClick={() => setExpandedId(expandedId === paper.id ? null : paper.id)}>
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2 flex-wrap">
+                <h3 className="font-medium text-gray-900 text-sm leading-relaxed flex-1">{paper.title}</h3>
+                {paper.paper_type && <PaperTypeBadge paperType={paper.paper_type} />}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+                <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{renderAuthors(paper.authors, paper.corresponding_author)}</span>
+                <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /><span className="text-red-600">{paper.journal}</span></span>
+                <span className="flex items-center gap-1"><Layers className="w-3 h-3" /><span className="font-bold text-black">{paper.journal_partition || '未设置分区'}</span></span>
+                <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />IF: {paper.impact_factor ?? '-'}</span>
+                <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />发表年份: {paper.publish_year ?? '-'}</span>
+              </div>
+              {/* Status pipeline — shown for all users */}
+              <StatusPipeline status={paper.status} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
+                {paper.status}
+              </span>
+              {editable && (
+                <button
+                  type="button"
+                  title="编辑论文"
+                  onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              )}
+              {!isStudent && (
+                <button
+                  type="button"
+                  title="删除论文"
+                  disabled={deletingId === paper.id}
+                  onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {expandedId === paper.id && paper.timeline.length > 0 && (
+          <div className="px-5 pb-5 border-t bg-gray-50">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase mt-3 mb-2">时间线</h4>
+            <div className="space-y-2">
+              {paper.timeline.map((t, i) => (
+                <div key={i} className="flex items-start gap-3 text-sm">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
+                    {i < paper.timeline.length - 1 && <div className="w-0.5 h-6 bg-green-200" />}
+                  </div>
+                  <div>
+                    <span className="text-gray-400 text-xs">{t.date}</span>
+                    <p className="text-gray-700">{t.event}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -370,18 +680,19 @@ export default function Papers() {
           <p className="text-xs text-gray-500 mt-0.5">
             （<span className="text-blue-600 font-semibold">蓝色</span>标记为通讯作者）
           </p>
-          <p className="text-gray-500 text-sm mt-1">共 {papers.length} 篇论文</p>
+          <p className="text-gray-500 text-sm mt-1">
+            {isStudent ? `我的论文 ${filtered.length} 篇` : `共 ${papers.length} 篇论文`}
+          </p>
         </div>
-        {!isStudent && (
-          <button
-            onClick={() => setShowForm(!showForm)}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-          >
-            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {showForm ? '取消' : '添加论文'}
-          </button>
-        )}
+        {/* Both students and admins can add papers */}
+        <button
+          onClick={() => setShowForm(!showForm)}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+        >
+          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {showForm ? '取消' : '添加论文'}
+        </button>
       </div>
 
       {error && (
@@ -413,72 +724,12 @@ export default function Papers() {
         <div className="bg-white rounded-xl shadow-sm border p-5">
           <h3 className="font-semibold mb-4">添加论文</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">标题</label>
-              <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">作者</label>
-                <input type="text" value={form.authors} onChange={(e) => setForm({ ...form, authors: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">期刊</label>
-                <input type="text" value={form.journal} onChange={(e) => setForm({ ...form, journal: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">状态</label>
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as PaperStatus })} className="w-full px-3 py-2 border rounded-lg text-sm">
-                  {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">影响因子</label>
-                <input type="number" step="0.1" value={form.impact_factor} onChange={(e) => setForm({ ...form, impact_factor: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="sm:col-span-2 lg:col-span-4">
-                <label className="block text-sm text-gray-600 mb-2">分区（可多选）</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {PARTITION_OPTIONS.map((partition) => (
-                    <label key={partition} className="inline-flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={form.journal_partitions.includes(partition)}
-                        onChange={() =>
-                          setForm((prev) => ({
-                            ...prev,
-                            journal_partitions: prev.journal_partitions.includes(partition)
-                              ? prev.journal_partitions.filter((item) => item !== partition)
-                              : [...prev.journal_partitions, partition],
-                          }))
-                        }
-                        className="rounded border-gray-300"
-                      />
-                      <span>{partition}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">投稿日期</label>
-                <input type="date" value={form.submission_date} onChange={(e) => setForm({ ...form, submission_date: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">发表年份</label>
-                <input type="number" min="1900" max="3000" value={form.publish_year} onChange={(e) => setForm({ ...form, publish_year: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="如 2026" />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">DOI</label>
-                <input type="text" value={form.doi} onChange={(e) => setForm({ ...form, doi: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">通讯作者</label>
-              <input type="text" value={form.corresponding_author} onChange={(e) => setForm({ ...form, corresponding_author: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="可填多个，使用逗号分隔" />
-            </div>
-            <button type="submit" disabled={saving} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+            <PaperFormFields form={form} setForm={setForm} isStudent={isStudent} />
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               {saving ? '保存中...' : '保存'}
             </button>
           </form>
@@ -488,12 +739,23 @@ export default function Papers() {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="搜索论文标题、作者、期刊..." value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm" />
+          <input
+            type="text"
+            placeholder="搜索论文标题、作者、期刊..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
+          />
         </div>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 border rounded-lg text-sm">
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-3 py-2 border rounded-lg text-sm"
+        >
           <option value="">全部状态</option>
-          {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
+          {Object.keys(STATUS_COLORS).map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
         </select>
       </div>
 
@@ -504,70 +766,7 @@ export default function Papers() {
               <h3 className="text-lg font-semibold text-gray-900">准备中的论文</h3>
               <span className="text-xs text-gray-400">共 {preparationPapers.length} 篇</span>
             </div>
-            {preparationPapers.map((paper) => (
-              <div key={paper.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <div className="p-5 cursor-pointer" onClick={() => setExpandedId(expandedId === paper.id ? null : paper.id)}>
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 text-sm leading-relaxed">{paper.title}</h3>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-                        <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{renderAuthors(paper.authors, paper.corresponding_author)}</span>
-                        <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /><span className="text-red-600">{paper.journal}</span></span>
-                        <span className="flex items-center gap-1"><Layers className="w-3 h-3" /><span className="font-bold text-black">{paper.journal_partition || '未设置分区'}</span></span>
-                        <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />IF: {paper.impact_factor ?? '-'}</span>
-                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />发表年份: {paper.publish_year ?? '-'}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
-                        {paper.status}
-                      </span>
-                      {!isStudent && (
-                        <>
-                          <button
-                            type="button"
-                            title="编辑论文"
-                            onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            title="删除论文"
-                            disabled={deletingId === paper.id}
-                            onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {expandedId === paper.id && paper.timeline.length > 0 && (
-                  <div className="px-5 pb-5 border-t bg-gray-50">
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase mt-3 mb-2">时间线</h4>
-                    <div className="space-y-2">
-                      {paper.timeline.map((t, i) => (
-                        <div key={i} className="flex items-start gap-3 text-sm">
-                          <div className="flex flex-col items-center">
-                            <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
-                            {i < paper.timeline.length - 1 && <div className="w-0.5 h-6 bg-green-200" />}
-                          </div>
-                          <div>
-                            <span className="text-gray-400 text-xs">{t.date}</span>
-                            <p className="text-gray-700">{t.event}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+            {preparationPapers.map((paper) => renderPaperCard(paper))}
           </div>
         )}
 
@@ -577,70 +776,7 @@ export default function Papers() {
               <h3 className="text-lg font-semibold text-gray-900">{year === '未分年份' ? year : `${year} 年`}</h3>
               <span className="text-xs text-gray-400">共 {yearPapers.length} 篇</span>
             </div>
-            {yearPapers.map((paper) => (
-              <div key={paper.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <div className="p-5 cursor-pointer" onClick={() => setExpandedId(expandedId === paper.id ? null : paper.id)}>
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 text-sm leading-relaxed">{paper.title}</h3>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-                        <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{renderAuthors(paper.authors, paper.corresponding_author)}</span>
-                        <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /><span className="text-red-600">{paper.journal}</span></span>
-                        <span className="flex items-center gap-1"><Layers className="w-3 h-3" /><span className="font-bold text-black">{paper.journal_partition || '未设置分区'}</span></span>
-                        <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />IF: {paper.impact_factor ?? '-'}</span>
-                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />发表年份: {paper.publish_year ?? '-'}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[paper.status]}`}>
-                        {paper.status}
-                      </span>
-                      {!isStudent && (
-                        <>
-                          <button
-                            type="button"
-                            title="编辑论文"
-                            onClick={(e) => { e.stopPropagation(); openEditModal(paper) }}
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-green-50 text-gray-400 hover:text-green-700 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            title="删除论文"
-                            disabled={deletingId === paper.id}
-                            onClick={(e) => { e.stopPropagation(); void handleDeletePaper(paper) }}
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {expandedId === paper.id && paper.timeline.length > 0 && (
-                  <div className="px-5 pb-5 border-t bg-gray-50">
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase mt-3 mb-2">时间线</h4>
-                    <div className="space-y-2">
-                      {paper.timeline.map((t, i) => (
-                        <div key={i} className="flex items-start gap-3 text-sm">
-                          <div className="flex flex-col items-center">
-                            <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
-                            {i < paper.timeline.length - 1 && <div className="w-0.5 h-6 bg-green-200" />}
-                          </div>
-                          <div>
-                            <span className="text-gray-400 text-xs">{t.date}</span>
-                            <p className="text-gray-700">{t.event}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+            {yearPapers.map((paper) => renderPaperCard(paper))}
           </div>
         ))}
       </div>
@@ -649,12 +785,12 @@ export default function Papers() {
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FileText className="w-16 h-16 text-gray-200 mb-4" />
           <h3 className="text-lg font-medium text-gray-400 mb-1">
-            {papers.length === 0 ? '暂无论文记录' : '没有找到匹配的论文'}
+            {filtered.length === 0 && papers.length === 0 ? '暂无论文记录' : '没有找到匹配的论文'}
           </h3>
           <p className="text-sm text-gray-300 mb-6">
             {papers.length === 0 ? '点击"添加论文"开始记录研究成果' : '尝试调整搜索或筛选条件'}
           </p>
-          {papers.length === 0 && !isStudent && (
+          {papers.length === 0 && (
             <button
               onClick={() => setShowForm(true)}
               className="flex items-center gap-2 px-5 py-2.5 text-sm text-white rounded-lg"
@@ -666,84 +802,35 @@ export default function Papers() {
         </div>
       )}
 
+      {/* Edit modal — available to admin (all papers) and students (their own papers) */}
       {editingId && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b z-10">
               <h3 className="font-semibold text-gray-900">编辑论文</h3>
-              <button type="button" onClick={() => setEditingId(null)} className="p-2 rounded hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="p-2 rounded hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
             <form onSubmit={handleUpdatePaper} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">标题</label>
-                <input type="text" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">作者</label>
-                  <input type="text" value={editForm.authors} onChange={(e) => setEditForm({ ...editForm, authors: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">期刊</label>
-                  <input type="text" value={editForm.journal} onChange={(e) => setEditForm({ ...editForm, journal: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">状态</label>
-                  <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as PaperStatus })} className="w-full px-3 py-2 border rounded-lg text-sm">
-                    {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">影响因子</label>
-                  <input type="number" step="0.1" value={editForm.impact_factor} onChange={(e) => setEditForm({ ...editForm, impact_factor: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="sm:col-span-2 lg:col-span-4">
-                  <label className="block text-sm text-gray-600 mb-2">分区（可多选）</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {PARTITION_OPTIONS.map((partition) => (
-                      <label key={partition} className="inline-flex items-center gap-2 text-sm text-gray-700">
-                        <input
-                          type="checkbox"
-                          checked={editForm.journal_partitions.includes(partition)}
-                          onChange={() =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              journal_partitions: prev.journal_partitions.includes(partition)
-                                ? prev.journal_partitions.filter((item) => item !== partition)
-                                : [...prev.journal_partitions, partition],
-                            }))
-                          }
-                          className="rounded border-gray-300"
-                        />
-                        <span>{partition}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">投稿日期</label>
-                  <input type="date" value={editForm.submission_date} onChange={(e) => setEditForm({ ...editForm, submission_date: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">发表年份</label>
-                  <input type="number" min="1900" max="3000" value={editForm.publish_year} onChange={(e) => setEditForm({ ...editForm, publish_year: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="如 2026" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">DOI</label>
-                  <input type="text" value={editForm.doi} onChange={(e) => setEditForm({ ...editForm, doi: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">通讯作者</label>
-                <input type="text" value={editForm.corresponding_author} onChange={(e) => setEditForm({ ...editForm, corresponding_author: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="可填多个，使用逗号分隔" />
-              </div>
+              <PaperFormFields form={editForm} setForm={setEditForm} isStudent={isStudent} />
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setEditingId(null)} className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">取消</button>
-                <button type="submit" disabled={savingEdit} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-60">
+                <button
+                  type="button"
+                  onClick={() => setEditingId(null)}
+                  className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-60"
+                >
                   {savingEdit ? '保存中...' : '保存修改'}
                 </button>
               </div>

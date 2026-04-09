@@ -147,7 +147,10 @@ export type PaperStatus = '在写' | '投稿中' | '审稿中' | '修改中' | '
 
 export type PaperPartition = '1区' | '2区' | '3区' | '4区' | '2区TOP' | 'EI' | 'CSCD' | '卓越期刊'
 
+export type PaperType = '毕业论文' | '期刊论文' | '会议论文'
+
 export interface Paper {
+  paper_type?: PaperType
   id: string
   title: string
   authors: string
