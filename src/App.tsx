@@ -77,14 +77,7 @@ export default function App() {
                   </RoleGuard>
                 }
               />
-              <Route
-                path="field-data"
-                element={
-                  <RoleGuard allowedRoles={['admin']}>
-                    <FieldData />
-                  </RoleGuard>
-                }
-              />
+              <Route path="field-data" element={<FieldData />} />
               <Route path="projects" element={<Projects />} />
               <Route path="papers" element={<Papers />} />
               <Route path="reports" element={<Reports />} />

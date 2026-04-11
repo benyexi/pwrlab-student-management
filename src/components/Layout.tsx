@@ -83,13 +83,13 @@ export default function Layout() {
         { to: '/papers', icon: FileText, label: '论文管理' },
       ],
     },
-    ...(!isStudent ? [{
+    {
       label: '野外',
       items: [
-        { to: '/sites', icon: MapPin, label: '站点管理' },
+        ...(!isStudent ? [{ to: '/sites', icon: MapPin, label: '站点管理' }] : []),
         { to: '/field-data', icon: Database, label: '数据采集' },
       ],
-    }] : []),
+    },
     {
       label: '管理',
       items: [
