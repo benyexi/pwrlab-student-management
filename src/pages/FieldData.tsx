@@ -482,6 +482,7 @@ function StudentView({ user }: { user: User }) {
 // AdminView
 // ─────────────────────────────────────────────
 function AdminView() {
+  const { user } = useAuth()
   const [sites, setSites] = useState<Site[]>([])
   const [observations, setObservations] = useState<Observation[]>([])
   const [files, setFiles] = useState<FileDbRow[]>([])
@@ -494,6 +495,12 @@ function AdminView() {
   const [search, setSearch] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Add-form states
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ ...EMPTY_FORM, student_name_input: '' })
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let mounted = true
@@ -545,6 +552,67 @@ function AdminView() {
     return true
   }), [observations, filterSite, filterType, filterStudent, dateFrom, dateTo, search])
 
+  async function handleAdminSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.site_id) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const studentName = form.student_name_input || '管理员'
+      const payload = {
+        site_id: form.site_id,
+        student_name: studentName,
+        submitted_by: user?.id,
+        date: form.date,
+        data_type: form.data_type,
+        value: form.value ? parseFloat(form.value) : null,
+        unit: form.unit || null,
+        dbh: form.dbh ? parseFloat(form.dbh) : null,
+        tree_height: form.tree_height ? parseFloat(form.tree_height) : null,
+        irrigation_amount: form.irrigation_amount ? parseFloat(form.irrigation_amount) : null,
+        phenology_stage: form.phenology_stage || null,
+        notes: form.notes || null,
+      }
+      const { data: inserted, error: obsErr } = await supabase
+        .from('field_observations').insert(payload)
+        .select('id,site_id,student_name,submitted_by,date,data_type,value,unit,dbh,tree_height,irrigation_amount,phenology_stage,notes,created_at')
+        .single()
+      if (obsErr) throw obsErr
+
+      if (selectedFiles.length > 0) {
+        const fileRows: object[] = []
+        for (const f of selectedFiles) {
+          let storagePath: string | null = null
+          try { storagePath = await uploadFile(f, inserted.id, studentName, () => {}) } catch { /* ignore */ }
+          fileRows.push({
+            file_name: f.name,
+            file_path: storagePath || `pending/${inserted.id}/${f.name}`,
+            storage_path: storagePath,
+            file_type: f.type || 'application/octet-stream',
+            file_size: f.size,
+            site_id: form.site_id,
+            student_name: studentName,
+            uploaded_by: user?.id,
+            observation_id: inserted.id,
+            upload_date: new Date().toISOString().slice(0, 10),
+            notes: form.notes || null,
+          })
+        }
+        await supabase.from('files').insert(fileRows)
+      }
+
+      const siteName = sites.find(s => s.id === form.site_id)?.name_cn || form.site_id
+      setObservations(prev => [mapObs(inserted as ObsRow, siteName, selectedFiles.length), ...prev])
+      setShowForm(false)
+      setForm({ ...EMPTY_FORM, student_name_input: '' })
+      setSelectedFiles([])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存失败，请重试')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   async function downloadFiles(obsId: string) {
     setDownloadingId(obsId)
     setError(null)
@@ -576,10 +644,122 @@ function AdminView() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">野外数据采集</h1>
-        <p className="text-gray-500 text-sm mt-1">共 {observations.length} 条记录</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">野外数据采集</h1>
+          <p className="text-gray-500 text-sm mt-1">共 {observations.length} 条记录</p>
+        </div>
+        <button
+          onClick={() => setShowForm(v => !v)}
+          className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm"
+          style={{ backgroundColor: '#1a3a2a' }}
+        >
+          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {showForm ? '取消' : '录入数据'}
+        </button>
       </div>
+
+      {showForm && (
+        <div className="bg-white rounded-xl shadow-sm border p-5">
+          <h3 className="font-semibold mb-4">录入观测数据</h3>
+          <form onSubmit={handleAdminSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">站点 *</label>
+                <select value={form.site_id} onChange={e => setForm({ ...form, site_id: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm" required>
+                  <option value="">选择站点</option>
+                  {sites.map(s => <option key={s.id} value={s.id}>{s.name_cn}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">日期 *</label>
+                <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm" required />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">数据类型</label>
+                <select value={form.data_type} onChange={e => setForm({ ...form, data_type: e.target.value as FieldDataType })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm">
+                  {Object.entries(DATA_TYPE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">采集学生</label>
+                <input type="text" value={form.student_name_input}
+                  onChange={e => setForm({ ...form, student_name_input: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="学生姓名（可选）" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {(form.data_type === 'soil_moisture' || form.data_type === 'sap_flow') && (<>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">数值</label>
+                  <input type="number" step="0.01" value={form.value}
+                    onChange={e => setForm({ ...form, value: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="测量值" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">单位</label>
+                  <input type="text" value={form.unit}
+                    onChange={e => setForm({ ...form, unit: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="如 %、g/h" />
+                </div>
+              </>)}
+              {form.data_type === 'growth' && (<>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">胸径 DBH (cm)</label>
+                  <input type="number" step="0.1" value={form.dbh}
+                    onChange={e => setForm({ ...form, dbh: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">树高 (m)</label>
+                  <input type="number" step="0.1" value={form.tree_height}
+                    onChange={e => setForm({ ...form, tree_height: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm" />
+                </div>
+              </>)}
+              {form.data_type === 'irrigation' && (
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">灌溉量 (mm)</label>
+                  <input type="number" step="0.1" value={form.irrigation_amount}
+                    onChange={e => setForm({ ...form, irrigation_amount: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm" />
+                </div>
+              )}
+              {form.data_type === 'phenology' && (
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">物候期</label>
+                  <input type="text" value={form.phenology_stage}
+                    onChange={e => setForm({ ...form, phenology_stage: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="如 展叶期、盛花期" />
+                </div>
+              )}
+              <div className="sm:col-span-2">
+                <label className="block text-sm text-gray-600 mb-1">备注</label>
+                <input type="text" value={form.notes}
+                  onChange={e => setForm({ ...form, notes: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="补充说明" />
+              </div>
+            </div>
+            <div>
+              <input ref={fileRef} type="file" multiple accept={ACCEPTED_TYPES} className="hidden"
+                onChange={e => setSelectedFiles(Array.from(e.target.files || []))} />
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-green-400 hover:text-green-700">
+                <Upload className="w-4 h-4" />
+                {selectedFiles.length > 0 ? `已选 ${selectedFiles.length} 个文件` : '选择文件/照片（可选）'}
+              </button>
+            </div>
+            <button type="submit" disabled={submitting}
+              className="px-6 py-2 min-h-[44px] text-white rounded-lg text-sm disabled:opacity-50"
+              style={{ backgroundColor: '#1a3a2a' }}>
+              {submitting ? '保存中...' : '提交'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
