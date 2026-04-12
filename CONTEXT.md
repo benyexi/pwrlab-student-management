@@ -69,15 +69,14 @@ paper_timeline, reports, milestones, instruments, reservations, files
 - [x] `scripts/fix_student_permissions.sql`：projects UPDATE 学生 RLS + profiles.name 批量修正
 - [x] `scripts/fix_paper_timeline_rls.sql`：paper_timeline INSERT/SELECT 学生权限 + 旧论文 student_name 补填
 
-### 需要席老师在 Supabase 操作（必须！）
-- [ ] **Dashboard → Storage**：手动建 bucket `field-observations`，设为私有，文件大小限 50MB
-- [ ] **SQL Editor**：执行 `scripts/field_data_upgrade.sql`（补字段 + 修 RLS + Storage RLS）
-  - 注意：Storage RLS 部分（CREATE POLICY on storage.objects）要等 bucket 建好后再执行
-  - 脚本末尾有注释掉的历史数据修复语句，等前端稳定后可解注释执行
+### ✅ 野外数据采集功能完成（2026-04-11）
+- [x] `scripts/field_data_upgrade.sql`：field_observations/files 补字段 + 修 RLS + Storage RLS
+- [x] Storage bucket `field-observations` 已在 Supabase Dashboard 建好（私有，50MB）
+- [x] App.tsx 去掉 /field-data 的 RoleGuard，学生可访问
+- [x] FieldData.tsx 重写：StudentView（移动端卡片/相机直拍/草稿/上传进度）+ AdminView（统计/筛选/下载）
 
 ### 之后
-- [ ] 测试：学生账号能录入野外数据、上传照片、查看自己记录
-- [ ] 测试：管理员能看全部数据、点文件下载（signed URL）
+- [ ] 野外数据功能端到端测试（学生账号录入 + 上传照片 + 管理员下载验证）
 - [ ] 通知邮件提醒（Supabase Edge Function）
 
 ## 数据操作日志
