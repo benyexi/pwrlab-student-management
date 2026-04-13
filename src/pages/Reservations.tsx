@@ -147,6 +147,20 @@ export default function Reservations() {
     }
   }
 
+  const isAdmin = user?.role === 'admin'
+
+  async function handleApprove(id: string) {
+    const { error } = await supabase.from('reservations').update({ status: '已批准' }).eq('id', id)
+    if (!error) setReservations(prev => prev.map(r => r.id === id ? { ...r, status: '已批准' } : r))
+    else setError('操作失败，请重试')
+  }
+
+  async function handleReject(id: string) {
+    const { error } = await supabase.from('reservations').update({ status: '已拒绝' }).eq('id', id)
+    if (!error) setReservations(prev => prev.map(r => r.id === id ? { ...r, status: '已拒绝' } : r))
+    else setError('操作失败，请重试')
+  }
+
   const filtered = reservations.filter(
     (r) => r.instrument_name.includes(search) || r.student_name.includes(search) || r.purpose.includes(search)
   )
@@ -301,6 +315,7 @@ export default function Reservations() {
                 <th className="px-3 py-3 text-left whitespace-nowrap">日期范围</th>
                 <th className="px-3 py-3 text-left whitespace-nowrap">用途</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap">状态</th>
+                {isAdmin && <th className="px-3 py-3 text-center whitespace-nowrap">操作</th>}
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -315,6 +330,22 @@ export default function Reservations() {
                       {r.status}
                     </span>
                   </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 text-center">
+                      {r.status === '待审批' && (
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => void handleApprove(r.id)}
+                            className="px-3 py-1 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            批准
+                          </button>
+                          <button onClick={() => void handleReject(r.id)}
+                            className="px-3 py-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600">
+                            拒绝
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

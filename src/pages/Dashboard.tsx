@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ElementType } from 'react'
-import { Users, BookOpen, GraduationCap, FlaskConical, Microscope, Beaker, Pencil } from 'lucide-react'
+import { Users, BookOpen, GraduationCap, FlaskConical, Microscope, Beaker, Pencil, MessageCircle } from 'lucide-react'
 import { getStudents, updateStudent, supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveOwnedStudents } from '../lib/studentOwnership'
@@ -113,6 +113,7 @@ export default function Dashboard() {
   const [editSaving, setEditSaving] = useState(false)
   const [editMsg, setEditMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [pendingQuestions, setPendingQuestions] = useState(0)
 
   useEffect(() => { document.title = '仪表盘 | PWRlab' }, [])
 
@@ -151,8 +152,12 @@ export default function Dashboard() {
         setLoading(false)
       })
     } else {
-      getStudents().then(({ data }) => {
-        setStudents(data ?? [])
+      Promise.all([
+        getStudents(),
+        supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', '待回复'),
+      ]).then(([studRes, questionsRes]) => {
+        setStudents(studRes.data ?? [])
+        setPendingQuestions(questionsRes.count ?? 0)
         setLoading(false)
       })
     }
@@ -426,6 +431,20 @@ export default function Dashboard() {
         <MiniCard label="博士" value={stats.phd} accentColor="#8b5cf6" icon={Microscope} />
         <MiniCard label="博士后" value={stats.postdoc} accentColor="#f59e0b" icon={Beaker} />
       </div>
+
+      {/* Pending questions alert */}
+      {pendingQuestions > 0 && (
+        <Link to="/questions" className="flex items-center gap-3 px-5 py-4 bg-amber-50 border border-amber-200 rounded-2xl hover:bg-amber-100 transition-colors">
+          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <MessageCircle className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800">有 {pendingQuestions} 条提问待回复</p>
+            <p className="text-xs text-amber-600 mt-0.5">点击前往提问答疑页面处理</p>
+          </div>
+          <span className="text-amber-400 text-sm">→</span>
+        </Link>
+      )}
 
       {/* Enrollment by year */}
       {yearEntries.length > 0 && (
