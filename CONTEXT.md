@@ -47,10 +47,15 @@ paper_timeline, reports, milestones, instruments, reservations, files
 
 ## 已知 Bug 与修复记录
 
-### 2026-04-09 生产环境无限加载 spinner
+### 2026-04-09 / 2026-04-12 生产环境无限加载 spinner（二次修复）
 - **现象**：首页显示深绿色背景 + "加载中..."，不跳转登录页
-- **根因**：AuthContext 仅靠 `onAuthStateChange` 初始化，Supabase v2 某些版本 `INITIAL_SESSION` 事件在生产环境延迟/丢失，`loading` 永远为 `true`
-- **修复**：AuthContext 改为 `getSession()` 显式初始化 + `onAuthStateChange` 跳过 `INITIAL_SESSION`（commit db50df7）
+- **根因（第一次）**：AuthContext 仅靠 `onAuthStateChange`，`INITIAL_SESSION` 在生产偶尔丢失
+- **修复（第一次）**：改用 `getSession()` 显式初始化（commit db50df7）
+- **根因（第二次）**：`getSession()` 在 token 过期时触发网络刷新；`fetchProfile()` 内的 DB 查询同理——两者都可能永远挂起，`finally` 永远不执行，`loading` 永远为 `true`
+- **修复（第二次）**：三层超时保护（commit 7a6cd3a）
+  1. `getSession()` 限时 8s，超时视为无 session
+  2. `fetchProfile()` 内 profiles 查询限时 5s，超时降级为最小 user 对象
+  3. `useEffect` 兜底 10s timeout，任何情况下最多卡 10 秒
 
 ### 2026-04-09 paper_timeline INSERT 被 RLS 拒绝
 - **现象**：论文保存成功但 `paper_timeline` 写入失败："new row violates row-level security policy"
