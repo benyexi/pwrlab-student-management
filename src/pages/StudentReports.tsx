@@ -17,6 +17,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { canAccessStudent } from '../lib/studentOwnership'
+import { sendNotification } from '../lib/notifications'
 import type { Report, ReportRow, Student } from '../types'
 
 type ReportFormState = {
@@ -417,6 +418,19 @@ export default function StudentReports() {
     closeForm()
     setForm(makeDefaultForm())
     setSaving(false)
+
+    // Fire-and-forget email notification to advisor (only on new report, not edit)
+    if (!editingId) {
+      void sendNotification({
+        type: 'report',
+        student_name: student.name,
+        title: `${student.name} 的周报`,
+        content: trimmedContent,
+        week_start: payload.week_start,
+        week_end: payload.week_end,
+        link: '/reports',
+      })
+    }
   }
 
   const handleDelete = async (report: Report) => {

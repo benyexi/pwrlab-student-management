@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { sendNotification } from '../lib/notifications'
 import type { Question, QuestionStatus, QuestionReply, Project } from '../types'
 
 const STATUS_STYLE: Record<QuestionStatus, { bg: string; text: string; icon: typeof Clock }> = {
@@ -109,7 +110,16 @@ export default function Questions() {
     }).select().single()
     if (e) { setError(e.message); return }
     if (data) setQuestions(prev => [data as Question, ...prev])
-    setShowAdd(false); setNewTitle(''); setNewContent(''); setNewProjectId('')
+    setShowAdd(false)
+    // Fire-and-forget email to advisor
+    void sendNotification({
+      type: 'question',
+      student_name: user.name,
+      title: newTitle,
+      content: newContent,
+      link: '/questions',
+    })
+    setNewTitle(''); setNewContent(''); setNewProjectId('')
   }
 
   if (loading) {
