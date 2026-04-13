@@ -25,23 +25,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    // Explicit initial session check — onAuthStateChange alone can stall in some
-    // Supabase v2 builds, leaving `loading` stuck at true forever.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      if (session?.user) {
-        fetchProfile(session.user)
-      } else {
+    // Hard-timeout safety net: if getSession() + fetchProfile() both hang
+    // (e.g. network stall during token refresh), unblock the UI after 10s.
+    const hardTimeout = setTimeout(() => {
+      if (mounted) {
         setUser(null)
         setLoading(false)
       }
-    })
+    }, 10000)
+
+    async function init() {
+      try {
+        // getSession() can trigger a network token-refresh that hangs forever.
+        // Race it against an 8s timeout that resolves as "no session".
+        const { data: { session } } = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<{ data: { session: null } }>(resolve =>
+            setTimeout(() => resolve({ data: { session: null } }), 8000)
+          ),
+        ])
+        if (!mounted) return
+        if (session?.user) {
+          await fetchProfile(session.user)
+        } else {
+          setUser(null)
+          setLoading(false)
+        }
+      } catch {
+        if (mounted) {
+          setUser(null)
+          setLoading(false)
+        }
+      } finally {
+        clearTimeout(hardTimeout)
+      }
+    }
+
+    init()
 
     // Subsequent auth changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return
-        if (event === 'INITIAL_SESSION') return   // already handled above
+        if (event === 'INITIAL_SESSION') return   // already handled by init()
         if (session?.user) {
           await fetchProfile(session.user)
         } else {
@@ -53,13 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false
+      clearTimeout(hardTimeout)
       subscription.unsubscribe()
     }
   }, [])
 
   async function fetchProfile(su: SupabaseUser) {
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', su.id).single()
+      // Race the profiles query against a 5s timeout so a hung DB call
+      // never leaves `loading` stuck at true.
+      const result = await Promise.race([
+        supabase.from('profiles').select('*').eq('id', su.id).single(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('profile fetch timeout')), 5000)
+        ),
+      ])
+      const { data } = result as { data: { email?: string; role?: string; name?: string } | null }
       setUser({
         id: su.id,
         email: data?.email || su.email || '',
@@ -67,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: data?.name || su.email?.split('@')[0] || 'User',
       })
     } catch {
+      // Any error (network, timeout, RLS denial) → fall back to minimal user
       setUser({
         id: su.id,
         email: su.email || '',
