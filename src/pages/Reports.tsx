@@ -137,8 +137,12 @@ export default function Reports() {
 
   const cards = useMemo<StudentReportCard[]>(() => {
     const now = new Date()
-    const yearStart = new Date(now.getFullYear(), 0, 1)
-    const requiredWeeks = buildRequiredWeeks(yearStart, now)
+    // Missing-count starts from next Monday — all weeks before that are ignored.
+    // buildRequiredWeeks(future, now) returns an empty set → missing = 0.
+    const daysUntilNextMonday = ((8 - now.getDay()) % 7) || 7  // 1–7
+    const nextMonday = new Date(now)
+    nextMonday.setDate(now.getDate() + daysUntilNextMonday)
+    const requiredWeeks = buildRequiredWeeks(nextMonday, now)
 
     const reportsByStudentId = new Map<string, Set<string>>()
     const reportsByStudentName = new Map<string, Set<string>>()
