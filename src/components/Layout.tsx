@@ -15,7 +15,6 @@ import {
   ClipboardList,
   Flag,
   Wrench,
-  Database,
   MessageCircle,
   KeyRound,
 } from 'lucide-react'
@@ -83,13 +82,12 @@ export default function Layout() {
         { to: '/papers', icon: FileText, label: '论文管理' },
       ],
     },
-    {
+    ...(!isStudent ? [{
       label: '野外',
       items: [
-        ...(!isStudent ? [{ to: '/sites', icon: MapPin, label: '站点管理' }] : []),
-        { to: '/field-data', icon: Database, label: '数据采集' },
+        { to: '/sites', icon: MapPin, label: '站点管理' },
       ],
-    },
+    }] : []),
     {
       label: '管理',
       items: [

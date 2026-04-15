@@ -24,6 +24,32 @@ type WeatherRow = WeatherRecord & {
   recorded_by?: string | null
 }
 
+type ObservationDataType = 'soil_moisture' | 'sap_flow' | 'growth' | 'irrigation' | 'phenology' | 'other'
+
+type FieldObservationRow = {
+  id: string
+  site_id: string
+  student_name: string | null
+  submitted_by: string | null
+  date: string
+  data_type: ObservationDataType
+  value: number | null
+  unit: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+const OBSERVATION_TYPES: ObservationDataType[] = ['soil_moisture', 'sap_flow', 'growth', 'irrigation', 'phenology', 'other']
+
+const OBSERVATION_TYPE_META: Record<ObservationDataType, { label: string; className: string }> = {
+  soil_moisture: { label: '土壤含水量', className: 'bg-blue-50 text-blue-700' },
+  sap_flow: { label: '树干液流', className: 'bg-green-50 text-green-700' },
+  growth: { label: '树木生长量', className: 'bg-amber-50 text-amber-700' },
+  irrigation: { label: '灌溉记录', className: 'bg-cyan-50 text-cyan-700' },
+  phenology: { label: '物候观测', className: 'bg-purple-50 text-purple-700' },
+  other: { label: '其他', className: 'bg-slate-100 text-slate-700' },
+}
+
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
   temperature: '',
@@ -47,6 +73,10 @@ const normalizeWeatherRecord = (record: WeatherRow): WeatherRecord => ({
   source: record.source,
   created_at: record.created_at,
 })
+
+const getObservationTypeMeta = (type: ObservationDataType) => {
+  return OBSERVATION_TYPE_META[type] ?? OBSERVATION_TYPE_META.other
+}
 
 const getSpeciesLabel = (site: SiteRow) => {
   const cn = site.species_cn?.trim()
@@ -253,6 +283,25 @@ export default function SiteDetail() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [obsLoading, setObsLoading] = useState(false)
+  const [obsSaving, setObsSaving] = useState(false)
+  const [observations, setObservations] = useState<FieldObservationRow[]>([])
+  const [obsForm, setObsForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    data_type: 'soil_moisture' as ObservationDataType,
+    value: '',
+    unit: '',
+    notes: '',
+  })
+  const [editingObsId, setEditingObsId] = useState<string | null>(null)
+  const [editingObsForm, setEditingObsForm] = useState({
+    date: '',
+    student_name: '',
+    data_type: 'soil_moisture' as ObservationDataType,
+    value: '',
+    unit: '',
+    notes: '',
+  })
 
   useEffect(() => {
     document.title = site ? `${site.name_cn} | PWRlab` : '站点详情 | PWRlab'
@@ -328,6 +377,31 @@ export default function SiteDetail() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  useEffect(() => {
+    if (!id || !user) return
+    const fetchObservations = async () => {
+      setObsLoading(true)
+      let query = supabase
+        .from('field_observations')
+        .select('*')
+        .eq('site_id', id)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+      if (user.role !== 'admin') {
+        query = query.eq('submitted_by', user.id)
+      }
+      const { data, error: obsError } = await query
+      if (obsError) {
+        setError(obsError.message)
+        setObservations([])
+      } else {
+        setObservations((data ?? []) as FieldObservationRow[])
+      }
+      setObsLoading(false)
+    }
+    fetchObservations()
+  }, [id, user])
 
   // Deduplicate: per date keep only the latest auto record.
   // Manual records are returned separately for orange-dot overlay.
@@ -492,6 +566,124 @@ export default function SiteDetail() {
     const a = document.createElement('a')
     a.href = url
     a.download = `${site.name_cn}_天气数据.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const refreshObservations = async () => {
+    if (!id || !user) return
+    setObsLoading(true)
+    let query = supabase
+      .from('field_observations')
+      .select('*')
+      .eq('site_id', id)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+    if (user.role !== 'admin') {
+      query = query.eq('submitted_by', user.id)
+    }
+    const { data, error: obsError } = await query
+    if (obsError) {
+      setError(obsError.message)
+      setObservations([])
+    } else {
+      setObservations((data ?? []) as FieldObservationRow[])
+    }
+    setObsLoading(false)
+  }
+
+  const handleObservationSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!id || !user) return
+    setObsSaving(true)
+    const { error: insertError } = await supabase.from('field_observations').insert({
+      site_id: id,
+      date: obsForm.date,
+      data_type: obsForm.data_type,
+      value: obsForm.value === '' ? null : parseFloat(obsForm.value),
+      unit: obsForm.unit || null,
+      notes: obsForm.notes || null,
+      student_name: user.name,
+      submitted_by: user.id,
+    })
+    setObsSaving(false)
+    if (insertError) {
+      setError(insertError.message)
+      return
+    }
+    setObsForm({
+      date: new Date().toISOString().slice(0, 10),
+      data_type: 'soil_moisture',
+      value: '',
+      unit: '',
+      notes: '',
+    })
+    await refreshObservations()
+  }
+
+  const handleDeleteObservation = async (rowId: string) => {
+    const { error: deleteError } = await supabase.from('field_observations').delete().eq('id', rowId)
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    setObservations((prev) => prev.filter((row) => row.id !== rowId))
+    if (editingObsId === rowId) {
+      setEditingObsId(null)
+    }
+  }
+
+  const startEditObservation = (row: FieldObservationRow) => {
+    setEditingObsId(row.id)
+    setEditingObsForm({
+      date: row.date,
+      student_name: row.student_name ?? '',
+      data_type: row.data_type,
+      value: row.value == null ? '' : String(row.value),
+      unit: row.unit ?? '',
+      notes: row.notes ?? '',
+    })
+  }
+
+  const handleSaveObservationEdit = async (rowId: string) => {
+    const { error: updateError } = await supabase
+      .from('field_observations')
+      .update({
+        date: editingObsForm.date,
+        student_name: editingObsForm.student_name || null,
+        data_type: editingObsForm.data_type,
+        value: editingObsForm.value === '' ? null : parseFloat(editingObsForm.value),
+        unit: editingObsForm.unit || null,
+        notes: editingObsForm.notes || null,
+      })
+      .eq('id', rowId)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setEditingObsId(null)
+    await refreshObservations()
+  }
+
+  const handleExportObservationCSV = () => {
+    const header = '日期,学生,数据类型,数值,单位,备注'
+    const rows = observations.map((row) => {
+      const typeMeta = getObservationTypeMeta(row.data_type)
+      return [
+        row.date,
+        row.student_name ?? '',
+        typeMeta.label,
+        row.value ?? '',
+        row.unit ?? '',
+        (row.notes ?? '').replace(/,/g, '，'),
+      ].join(',')
+    })
+    const csv = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${site?.name_cn ?? 'site'}_观测数据.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -684,6 +876,248 @@ export default function SiteDetail() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="border-t border-gray-200 pt-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">观测数据录入</h2>
+          {user?.role === 'admin' && (
+            <button
+              onClick={handleExportObservationCSV}
+              disabled={observations.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-sm hover:bg-gray-100 disabled:opacity-40"
+            >
+              <Download className="w-3.5 h-3.5" />
+              导出CSV
+            </button>
+          )}
+        </div>
+
+        {obsLoading ? (
+          <div className="bg-white rounded-xl border p-6 text-sm text-gray-500">加载中…</div>
+        ) : user?.role !== 'admin' ? (
+          <div className="space-y-4">
+            <form onSubmit={handleObservationSubmit} className="bg-white rounded-xl shadow-sm border p-4 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                <input
+                  type="date"
+                  value={obsForm.date}
+                  onChange={(e) => setObsForm((prev) => ({ ...prev, date: e.target.value }))}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                  required
+                />
+                <select
+                  value={obsForm.data_type}
+                  onChange={(e) => setObsForm((prev) => ({ ...prev, data_type: e.target.value as ObservationDataType }))}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  {OBSERVATION_TYPES.map((type) => (
+                    <option key={type} value={type}>{OBSERVATION_TYPE_META[type].label}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="数值"
+                  value={obsForm.value}
+                  onChange={(e) => setObsForm((prev) => ({ ...prev, value: e.target.value }))}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="单位"
+                  value={obsForm.unit}
+                  onChange={(e) => setObsForm((prev) => ({ ...prev, unit: e.target.value }))}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={obsSaving}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
+                >
+                  {obsSaving ? '提交中…' : '提交记录'}
+                </button>
+              </div>
+              <textarea
+                placeholder="备注"
+                value={obsForm.notes}
+                onChange={(e) => setObsForm((prev) => ({ ...prev, notes: e.target.value }))}
+                className="w-full px-3 py-2 border rounded-lg text-sm"
+                rows={3}
+              />
+            </form>
+
+            <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+              <table className="w-full text-sm min-w-[640px]">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                  <tr>
+                    <th className="px-3 py-3 text-left">日期</th>
+                    <th className="px-3 py-3 text-left">数据类型</th>
+                    <th className="px-3 py-3 text-left">数值</th>
+                    <th className="px-3 py-3 text-left">备注</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {observations.map((row) => {
+                    const typeMeta = getObservationTypeMeta(row.data_type)
+                    return (
+                      <tr key={row.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2">{row.date}</td>
+                        <td className="px-3 py-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeMeta.className}`}>
+                            {typeMeta.label}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">{row.value ?? '—'}{row.unit ? ` ${row.unit}` : ''}</td>
+                        <td className="px-3 py-2 text-gray-600">{row.notes || '—'}</td>
+                      </tr>
+                    )
+                  })}
+                  {observations.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-8 text-center text-sm text-gray-400">暂无记录</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+            <table className="w-full text-sm min-w-[960px]">
+              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                <tr>
+                  <th className="px-3 py-3 text-left">日期</th>
+                  <th className="px-3 py-3 text-left">学生</th>
+                  <th className="px-3 py-3 text-left">数据类型</th>
+                  <th className="px-3 py-3 text-left">数值</th>
+                  <th className="px-3 py-3 text-left">备注</th>
+                  <th className="px-3 py-3 text-left">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {observations.map((row) => {
+                  const editing = editingObsId === row.id
+                  const typeMeta = getObservationTypeMeta(editing ? editingObsForm.data_type : row.data_type)
+                  return (
+                    <tr key={row.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        {editing ? (
+                          <input
+                            type="date"
+                            value={editingObsForm.date}
+                            onChange={(e) => setEditingObsForm((prev) => ({ ...prev, date: e.target.value }))}
+                            className="px-2 py-1 border rounded text-sm"
+                          />
+                        ) : row.date}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editing ? (
+                          <input
+                            type="text"
+                            value={editingObsForm.student_name}
+                            onChange={(e) => setEditingObsForm((prev) => ({ ...prev, student_name: e.target.value }))}
+                            className="px-2 py-1 border rounded text-sm w-32"
+                          />
+                        ) : (row.student_name || '—')}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editing ? (
+                          <select
+                            value={editingObsForm.data_type}
+                            onChange={(e) => setEditingObsForm((prev) => ({ ...prev, data_type: e.target.value as ObservationDataType }))}
+                            className="px-2 py-1 border rounded text-sm"
+                          >
+                            {OBSERVATION_TYPES.map((type) => (
+                              <option key={type} value={type}>{OBSERVATION_TYPE_META[type].label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeMeta.className}`}>
+                            {typeMeta.label}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editing ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editingObsForm.value}
+                              onChange={(e) => setEditingObsForm((prev) => ({ ...prev, value: e.target.value }))}
+                              className="px-2 py-1 border rounded text-sm w-24"
+                            />
+                            <input
+                              type="text"
+                              value={editingObsForm.unit}
+                              onChange={(e) => setEditingObsForm((prev) => ({ ...prev, unit: e.target.value }))}
+                              className="px-2 py-1 border rounded text-sm w-24"
+                              placeholder="单位"
+                            />
+                          </div>
+                        ) : (
+                          `${row.value ?? '—'}${row.unit ? ` ${row.unit}` : ''}`
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {editing ? (
+                          <textarea
+                            value={editingObsForm.notes}
+                            onChange={(e) => setEditingObsForm((prev) => ({ ...prev, notes: e.target.value }))}
+                            className="px-2 py-1 border rounded text-sm w-full min-w-[220px]"
+                            rows={2}
+                          />
+                        ) : (
+                          <span className="text-gray-600">{row.notes || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-2">
+                          {editing ? (
+                            <>
+                              <button
+                                onClick={() => handleSaveObservationEdit(row.id)}
+                                className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                              >
+                                保存
+                              </button>
+                              <button
+                                onClick={() => setEditingObsId(null)}
+                                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
+                              >
+                                取消
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => startEditObservation(row)}
+                              className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs hover:bg-blue-100"
+                            >
+                              编辑
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteObservation(row.id)}
+                            className="px-2 py-1 bg-red-50 text-red-700 rounded text-xs hover:bg-red-100"
+                          >
+                            删除
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+                {observations.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">暂无记录</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

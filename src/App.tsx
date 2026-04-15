@@ -12,7 +12,6 @@ const StudentDetail = lazy(() => import('./pages/StudentDetail'))
 const Sites = lazy(() => import('./pages/Sites'))
 const SiteDetail = lazy(() => import('./pages/SiteDetail'))
 const GaotangDetail = lazy(() => import('./pages/GaotangDetail'))
-const FieldData = lazy(() => import('./pages/FieldData'))
 const Projects = lazy(() => import('./pages/Projects'))
 const Papers = lazy(() => import('./pages/Papers'))
 const Reports = lazy(() => import('./pages/Reports'))
@@ -86,7 +85,6 @@ export default function App() {
                   </RoleGuard>
                 }
               />
-              <Route path="field-data" element={<FieldData />} />
               <Route path="projects" element={<Projects />} />
               <Route path="papers" element={<Papers />} />
               <Route path="reports" element={<Reports />} />
