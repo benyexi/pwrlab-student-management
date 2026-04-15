@@ -56,19 +56,27 @@ export default function Sites() {
     }
   }, [])
 
+  const GAOTANG_ID = 's12'
+
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase()
-    if (!keyword) return sites
-
-    return sites.filter((s) => {
-      const species = `${s.species_cn ?? ''} ${s.species_en ?? ''}`.toLowerCase()
-      const region = (s.region ?? '').toLowerCase()
-      return (
-        s.name_cn.toLowerCase().includes(keyword) ||
-        s.name_en.toLowerCase().includes(keyword) ||
-        species.includes(keyword) ||
-        region.includes(keyword)
-      )
+    const base = keyword
+      ? sites.filter((s) => {
+          const species = `${s.species_cn ?? ''} ${s.species_en ?? ''}`.toLowerCase()
+          const region = (s.region ?? '').toLowerCase()
+          return (
+            s.name_cn.toLowerCase().includes(keyword) ||
+            s.name_en.toLowerCase().includes(keyword) ||
+            species.includes(keyword) ||
+            region.includes(keyword)
+          )
+        })
+      : sites
+    // Gaotang always first
+    return [...base].sort((a, b) => {
+      if (a.id === GAOTANG_ID) return -1
+      if (b.id === GAOTANG_ID) return 1
+      return 0
     })
   }, [search, sites])
 
@@ -115,17 +123,28 @@ export default function Sites() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filtered.map((site) => (
+        {filtered.map((site) => {
+          const isGaotang = site.id === GAOTANG_ID
+          return (
           <div
             key={site.id}
-            onClick={() => navigate(`/sites/${site.id}`)}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 cursor-pointer hover:shadow-md hover:border-green-200 transition-all group"
+            onClick={() => navigate(isGaotang ? '/sites/gaotang' : `/sites/${site.id}`)}
+            className={`bg-white rounded-xl shadow-sm border p-5 cursor-pointer hover:shadow-md transition-all group ${
+              isGaotang
+                ? 'border-green-400 ring-2 ring-green-200 hover:border-green-500'
+                : 'border-gray-100 hover:border-green-200'
+            }`}
           >
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-gray-900 group-hover:text-green-700 transition-colors">
-                  {site.name_cn}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-green-700 transition-colors">
+                    {site.name_cn}
+                  </h3>
+                  {isGaotang && (
+                    <span className="text-xs bg-green-600 text-white px-1.5 py-0.5 rounded-full font-medium">主站点</span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400 mt-0.5">{site.name_en}</p>
               </div>
               <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full font-medium">
@@ -151,7 +170,8 @@ export default function Sites() {
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {filtered.length === 0 && (

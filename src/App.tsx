@@ -11,6 +11,7 @@ const Students = lazy(() => import('./pages/Students'))
 const StudentDetail = lazy(() => import('./pages/StudentDetail'))
 const Sites = lazy(() => import('./pages/Sites'))
 const SiteDetail = lazy(() => import('./pages/SiteDetail'))
+const GaotangDetail = lazy(() => import('./pages/GaotangDetail'))
 const FieldData = lazy(() => import('./pages/FieldData'))
 const Projects = lazy(() => import('./pages/Projects'))
 const Papers = lazy(() => import('./pages/Papers'))
@@ -66,6 +67,14 @@ export default function App() {
                 element={
                   <RoleGuard allowedRoles={['admin']}>
                     <Sites />
+                  </RoleGuard>
+                }
+              />
+              <Route
+                path="sites/gaotang"
+                element={
+                  <RoleGuard allowedRoles={['admin']}>
+                    <GaotangDetail />
                   </RoleGuard>
                 }
               />
