@@ -84,8 +84,11 @@ paper_timeline, reports, milestones, instruments, reservations, files
 - [x] 周报缺交数重置：起始周改为下周一，缺交数归零（commit c723a7a）
 - [x] 邮件通知 Edge Function 部署完成（Resend，commit 1313170，supabase functions deploy send-notification）
 
-### 之后
-- [ ] 野外数据功能端到端测试（学生账号录入 + 上传照片 + 管理员下载验证）
+### ✅ 2026-04-15（续）
+- [x] 数据采集合并到站点详情（SiteDetail + GaotangDetail 管理员可见所有人记录，删除独立 /field-data 路由）（commit 4e0a5ec）
+- [x] 树木生长每木检尺改为可编辑表格（GaotangDetail.tsx InlineTreeTable，保存全部一次性提交）（commit 4e0a5ec）
+- [x] 管理员原始数据总览（Sites.tsx 顶部4格统计+分页列表+筛选+导出CSV）（commit 930df0f）
+- [x] 野外数据功能端到端测试（已合并到站点管理，无需独立测试）
 
 ### ✅ 验收目标全部达成（2026-04-12）
 - [x] B5: Dashboard 管理员视图显示待回复提问数量（amber 横幅，点击跳转 /questions）
