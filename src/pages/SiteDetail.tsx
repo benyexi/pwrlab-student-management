@@ -72,8 +72,8 @@ async function pruneOldRecords(siteId: string) {
 
 // ─── Mini SVG chart helpers ───────────────────────────────────────────────────
 const W = 400
-const H = 90
-const PAD = { left: 4, right: 4, top: 12, bottom: 22 }
+const H = 100
+const PAD = { left: 4, right: 4, top: 12, bottom: 28 }
 const innerW = W - PAD.left - PAD.right
 const innerH = H - PAD.top - PAD.bottom
 
@@ -94,9 +94,10 @@ type MiniChartProps = {
   gradientId: string
   type: 'line' | 'bar'
   label: string
+  overlayData?: WeatherRecord[]   // manual records shown as orange dots
 }
 
-function MiniChart({ data, field, color, gradientId, type, label }: MiniChartProps) {
+function MiniChart({ data, field, color, gradientId, type, label, overlayData }: MiniChartProps) {
   const values = data.map((d) => (d[field] as number | null | undefined) ?? 0)
   const minVal = type === 'line' ? Math.min(...values) : 0
   const maxVal = Math.max(...values, type === 'bar' ? 1 : minVal + 1)
@@ -201,6 +202,22 @@ function MiniChart({ data, field, color, gradientId, type, label }: MiniChartPro
             )
           })()}
 
+          {/* Orange overlay dots for manual records */}
+          {overlayData && overlayData.map((d, i) => {
+            const v = (d[field] as number | null | undefined) ?? 0
+            // find x position by matching date in main data array
+            const mainIdx = data.findIndex(m => m.date === d.date)
+            const cx = mainIdx >= 0
+              ? xPos(mainIdx, data.length)
+              : xPos(i, Math.max(data.length, 1))
+            const cy = yPos(v, type === 'line' ? Math.min(...data.map(dd => (dd[field] as number) ?? 0), v) : 0,
+              Math.max(...data.map(dd => (dd[field] as number) ?? 0), v, type === 'bar' ? 1 : 0))
+            return (
+              <circle key={`ov${i}`} cx={cx} cy={cy} r="4"
+                fill="#f97316" stroke="white" strokeWidth="1.5" opacity="0.9" />
+            )
+          })}
+
           {/* X-axis date labels — one every 5 items */}
           {data.map((d, i) => {
             if (i % 5 !== 0 && i !== data.length - 1) return null
@@ -208,9 +225,9 @@ function MiniChart({ data, field, color, gradientId, type, label }: MiniChartPro
               <text
                 key={`xl${i}`}
                 x={xPos(i, data.length)}
-                y={H - 4}
+                y={H - 6}
                 textAnchor="middle"
-                fontSize="8"
+                fontSize="10"
                 fill="#9ca3af"
               >
                 {d.date.slice(5)}
@@ -312,8 +329,25 @@ export default function SiteDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const chartData = useMemo(() => {
-    return [...weather].sort((a, b) => a.date.localeCompare(b.date)).slice(-30)
+  // Deduplicate: per date keep only the latest auto record.
+  // Manual records are returned separately for orange-dot overlay.
+  const { chartData, manualChartData } = useMemo(() => {
+    const sorted = [...weather].sort((a, b) =>
+      a.date !== b.date
+        ? a.date.localeCompare(b.date)
+        : (a.created_at ?? '').localeCompare(b.created_at ?? '')
+    )
+    // Latest auto per date (last wins after sort by created_at asc)
+    const autoByDate = new Map<string, WeatherRecord>()
+    const manuals: WeatherRecord[] = []
+    for (const r of sorted) {
+      if (r.source === 'manual') { manuals.push(r) }
+      else { autoByDate.set(r.date, r) }
+    }
+    const autoSorted = [...autoByDate.values()]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-30)
+    return { chartData: autoSorted, manualChartData: manuals }
   }, [weather])
 
   // Shared fetch logic (also called from useEffect on mount)
@@ -530,6 +564,7 @@ export default function SiteDetail() {
           gradientId="grad_temp"
           type="line"
           label="温度(°C)"
+          overlayData={manualChartData}
         />
         <MiniChart
           data={chartData}
@@ -538,6 +573,7 @@ export default function SiteDetail() {
           gradientId="grad_rain"
           type="bar"
           label="降雨(mm)"
+          overlayData={manualChartData}
         />
         <MiniChart
           data={chartData}
@@ -546,6 +582,7 @@ export default function SiteDetail() {
           gradientId="grad_humi"
           type="line"
           label="湿度(%)"
+          overlayData={manualChartData}
         />
         <MiniChart
           data={chartData}
@@ -554,8 +591,19 @@ export default function SiteDetail() {
           gradientId="grad_wind"
           type="line"
           label="风速(m/s)"
+          overlayData={manualChartData}
         />
       </div>
+      {manualChartData.length > 0 && (
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-0.5 bg-gray-400 rounded" /> 自动采集
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded-full bg-orange-400" /> 手动补充
+          </span>
+        </div>
+      )}
 
       {/* Weather records table */}
       <div className="bg-white rounded-xl shadow-sm border">
