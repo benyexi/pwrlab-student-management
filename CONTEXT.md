@@ -238,5 +238,5 @@ paper_timeline, reports, milestones, instruments, reservations, files
 - [x] GT4. SiteDetail.tsx 天气图表：30天去重（auto按日期保留最新），X轴字体10px，手动数据橙色叠加点（commit 8ec7a25）
 - [x] GT5. 周报缺交数从下周一归零（commit c723a7a，已线上生效）
 
-### ⚠️ 待手动执行
-- [ ] 在 Supabase SQL Editor 执行 scripts/gaotang_schema.sql（见 TODO_MANUAL.md）
+### ✅ 手动执行完成（2026-04-15）
+- [x] 在 Supabase SQL Editor 执行 scripts/gaotang_schema.sql（10张高唐表已创建）
