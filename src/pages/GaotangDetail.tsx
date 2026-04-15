@@ -424,9 +424,9 @@ function TreeGrowthModule({ stand, user }: { stand: string; user: AuthUser }) {
     let query = supabase
       .from('gaotang_tree_growth')
       .select('*')
-      .eq('stand', stand)
-      .eq('sub_type', 'dendrometry')
-      .order('measure_date', { ascending: false })
+      .eq('stand_name', stand)
+      .eq('record_type', '每木检尺')
+      .order('record_date', { ascending: false })
       .order('created_at', { ascending: false })
 
     if (user.role !== 'admin') {
@@ -436,18 +436,18 @@ function TreeGrowthModule({ stand, user }: { stand: string; user: AuthUser }) {
     const { data } = await query
     const mapped = (data ?? []).map((row) => makeTreeRow({
       id: String(row.id),
-      sample_no: String(row.sample_no ?? ''),
-      dbh: row.dbh == null ? '' : String(row.dbh),
-      tree_height: row.tree_height == null ? '' : String(row.tree_height),
-      crown_height: row.crown_height == null ? '' : String(row.crown_height),
-      crown_width: row.crown_width == null ? '' : String(row.crown_width),
+      sample_no: String(row.tree_id ?? ''),
+      dbh: row.dbh_cm == null ? '' : String(row.dbh_cm),
+      tree_height: row.tree_height_m == null ? '' : String(row.tree_height_m),
+      crown_height: row.branch_height_m == null ? '' : String(row.branch_height_m),
+      crown_width: row.crown_width_m == null ? '' : String(row.crown_width_m),
       _dirty: false,
     }))
     setTreeRows(mapped)
 
     const first = data?.[0]
-    if (first?.measure_date) {
-      setMeasureDate(String(first.measure_date))
+    if (first?.record_date) {
+      setMeasureDate(String(first.record_date))
     } else {
       setMeasureDate(today())
     }
@@ -501,16 +501,16 @@ function TreeGrowthModule({ stand, user }: { stand: string; user: AuthUser }) {
 
     for (const row of treeRows) {
       const payload = {
-        stand,
-        measure_date: measureDate,
+        stand_name: stand,
+        record_type: '每木检尺',
+        record_date: measureDate,
         operator,
-        sample_no: row.sample_no || null,
-        dbh: parseOptionalNumber(row.dbh),
-        tree_height: parseOptionalNumber(row.tree_height),
-        crown_height: parseOptionalNumber(row.crown_height),
-        crown_width: parseOptionalNumber(row.crown_width),
+        tree_id: row.sample_no || null,
+        dbh_cm: parseOptionalNumber(row.dbh),
+        tree_height_m: parseOptionalNumber(row.tree_height),
+        branch_height_m: parseOptionalNumber(row.crown_height),
+        crown_width_m: parseOptionalNumber(row.crown_width),
         created_by: user.id,
-        sub_type: 'dendrometry',
       }
 
       if (row.id) {
