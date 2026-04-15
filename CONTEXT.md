@@ -80,9 +80,12 @@ paper_timeline, reports, milestones, instruments, reservations, files
 - [x] App.tsx 去掉 /field-data 的 RoleGuard，学生可访问
 - [x] FieldData.tsx 重写：StudentView（移动端卡片/相机直拍/草稿/上传进度）+ AdminView（统计/筛选/下载）
 
+### ✅ 2026-04-15
+- [x] 周报缺交数重置：起始周改为下周一，缺交数归零（commit c723a7a）
+- [x] 邮件通知 Edge Function 部署完成（Resend，commit 1313170，supabase functions deploy send-notification）
+
 ### 之后
 - [ ] 野外数据功能端到端测试（学生账号录入 + 上传照片 + 管理员下载验证）
-- [ ] 通知邮件提醒（Supabase Edge Function）
 
 ### ✅ 验收目标全部达成（2026-04-12）
 - [x] B5: Dashboard 管理员视图显示待回复提问数量（amber 横幅，点击跳转 /questions）
